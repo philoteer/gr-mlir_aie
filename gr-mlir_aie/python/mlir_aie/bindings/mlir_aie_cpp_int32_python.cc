@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_int32.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(e9f60a184fea445ba527a2f238a8a5a7)                     */
+/* BINDTOOL_HEADER_FILE_HASH(95267341f7feb4d9308131de92dbccee)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,7 +37,12 @@ void bind_mlir_aie_cpp_int32(py::module& m)
         std::shared_ptr<mlir_aie_cpp_int32>>(m, "mlir_aie_cpp_int32", D(mlir_aie_cpp_int32))
 
         .def(py::init(&mlir_aie_cpp_int32::make),
-           D(mlir_aie_cpp_int32,make)
+           D(mlir_aie_cpp_int32,make),
+           py::arg("path_xclbin"),
+           py::arg("path_insts_bin"),
+           py::arg("kernel_name"),
+           py::arg("VECTOR_SIZE"),
+           py::arg("num_slots") = 1
         )
         
 
@@ -49,8 +54,6 @@ void bind_mlir_aie_cpp_int32(py::module& m)
 
 
 }
-
-
 
 
 
