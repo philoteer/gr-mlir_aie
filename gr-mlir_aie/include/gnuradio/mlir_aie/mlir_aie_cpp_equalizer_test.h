@@ -40,7 +40,8 @@ public:
                      const char* path_insts_bin,
                      const char* kernel_name,
                      int VECTOR_SIZE,
-                     double nominal_frequency);
+                     double nominal_frequency,
+                     int num_slots = 1);
 
     virtual void set_nominal_frequency(double nominal_frequency) = 0;
     virtual double nominal_frequency() const = 0;

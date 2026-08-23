@@ -79,27 +79,37 @@ private:
     static_assert(sizeof(tile_metadata) == 8968,
                   "frame equalizer tile metadata ABI changed");
 
+    struct io_slot {
+        xrt::bo input_bo;
+        xrt::bo input_meta_bo;
+        xrt::bo output_bo;
+        xrt::bo output_meta_bo;
+        xrt::run run;
+        kernel_input_type* input = nullptr;
+        std::int32_t* input_meta = nullptr;
+        equalizer_output_type* output = nullptr;
+        tile_metadata* output_meta = nullptr;
+    };
+
     int _VECTOR_SIZE;
     int _TILE_SIZE;
     std::atomic<double> _nominal_frequency;
     unsigned int _opcode_run;
     xrt::kernel _kernel;
-    xrt::bo _bo_instr, _bo_in, _bo_in_meta, _bo_out, _bo_out_meta;
+    xrt::bo _bo_instr;
     std::vector<std::uint32_t> _instr_v;
     xrt::device _device;
-    xrt::run _run;
+    std::vector<io_slot> _slots;
 
-    kernel_input_type* _buf_in;
-    std::int32_t* _buf_in_meta;
-    equalizer_output_type* _buf_out;
-    tile_metadata* _buf_out_meta;
+    void* bufInstr;
 
 public:
     mlir_aie_cpp_equalizer_test_impl(const char* path_xclbin,
                                      const char* path_insts_bin,
                                      const char* kernel_name,
                                      int VECTOR_SIZE,
-                                     double nominal_frequency);
+                                     double nominal_frequency,
+                                     int num_slots);
     ~mlir_aie_cpp_equalizer_test_impl();
 
     // Where all the action really happens

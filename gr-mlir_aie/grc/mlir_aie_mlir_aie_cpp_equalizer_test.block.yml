@@ -4,7 +4,7 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_cpp_equalizer_test(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency})
+  make: mlir_aie.mlir_aie_cpp_equalizer_test(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency}, ${num_slots})
   callbacks:
   - set_nominal_frequency(${nominal_frequency})
 
@@ -33,6 +33,11 @@ parameters:
   label: Nominal Frequency (Hz)
   dtype: real
   default: 2.417e9
+
+- id: num_slots
+  label: Number of slots
+  dtype: int
+  default: 1
 
 inputs:
 - label: in
