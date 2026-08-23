@@ -27,6 +27,16 @@ using tagged_int64_output_type = std::int64_t;
 class mlir_aie_cpp_tagged_int32_to_int64_impl : public mlir_aie_cpp_tagged_int32_to_int64
 {
 private:
+    struct io_slot {
+        xrt::bo input_bo;
+        xrt::bo output_bo;
+        xrt::bo output_meta_bo;
+        xrt::run run;
+        tagged_int64_input_type* input = nullptr;
+        tagged_int64_output_type* output = nullptr;
+        std::int32_t* output_meta = nullptr;
+    };
+
     static constexpr int _MAX_TAGS_PER_TILE = 31;
     static constexpr int _N_TILES = 4;
     static constexpr int _METADATA_WORDS_PER_TILE = 2 + 2 * _MAX_TAGS_PER_TILE;
@@ -39,21 +49,19 @@ private:
     int _trace_size;
     unsigned int _opcode_run;
     xrt::kernel _kernel;
-    xrt::bo _bo_instr, _bo_inA, _bo_out, _bo_out_meta;
+    xrt::bo _bo_instr;
     std::vector<uint32_t> _instr_v;
     xrt::device _device;
-    xrt::run _run;
+    std::vector<io_slot> _slots;
 
-    tagged_int64_input_type* _bufInA;
-    tagged_int64_output_type* _bufOut;
-    std::int32_t* _bufOutMeta;
     void* bufInstr;
 
 public:
     mlir_aie_cpp_tagged_int32_to_int64_impl(const char* path_xclbin,
-                                            const char* path_insts_bin,
-                                            const char* kernel_name,
-                                            int VECTOR_SIZE);
+                                             const char* path_insts_bin,
+                                             const char* kernel_name,
+                                             int VECTOR_SIZE,
+                                             int num_slots);
     ~mlir_aie_cpp_tagged_int32_to_int64_impl();
 
     // Where all the action really happens

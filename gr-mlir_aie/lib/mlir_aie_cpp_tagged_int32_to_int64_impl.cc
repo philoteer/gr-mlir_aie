@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
 
 namespace gr {
 namespace mlir_aie {
@@ -20,17 +21,19 @@ mlir_aie_cpp_tagged_int32_to_int64::sptr
 mlir_aie_cpp_tagged_int32_to_int64::make(const char* path_xclbin,
                                          const char* path_insts_bin,
                                          const char* kernel_name,
-                                         int VECTOR_SIZE)
+                                         int VECTOR_SIZE,
+                                         int num_slots)
 {
     return gnuradio::make_block_sptr<mlir_aie_cpp_tagged_int32_to_int64_impl>(
-        path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE);
+        path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE, num_slots);
 }
 
 mlir_aie_cpp_tagged_int32_to_int64_impl::mlir_aie_cpp_tagged_int32_to_int64_impl(
     const char* path_xclbin,
     const char* path_insts_bin,
     const char* kernel_name,
-    int VECTOR_SIZE)
+    int VECTOR_SIZE,
+    int num_slots)
     : gr::block(
           "mlir_aie_cpp_tagged_int32_to_int64",
           gr::io_signature::make(
@@ -38,6 +41,10 @@ mlir_aie_cpp_tagged_int32_to_int64_impl::mlir_aie_cpp_tagged_int32_to_int64_impl
           gr::io_signature::make(
               1, 1, sizeof(tagged_int64_output_type)))
 {
+    if (num_slots < 1) {
+        throw std::invalid_argument("num_slots must be at least 1");
+    }
+
     _path_xclbin = path_xclbin;
     _path_insts_bin = path_insts_bin;
     _VECTOR_SIZE = VECTOR_SIZE;
@@ -58,44 +65,48 @@ mlir_aie_cpp_tagged_int32_to_int64_impl::mlir_aie_cpp_tagged_int32_to_int64_impl
                         _instr_v.size() * sizeof(int),
                         XCL_BO_FLAGS_CACHEABLE,
                         _kernel.group_id(1));
-    _bo_inA = xrt::bo(_device,
-                      _VECTOR_SIZE * sizeof(tagged_int64_input_type),
-                      XRT_BO_FLAGS_HOST_ONLY,
-                      _kernel.group_id(3));
-    _bo_out = xrt::bo(_device,
-                      _VECTOR_SIZE * sizeof(tagged_int64_output_type) + _trace_size,
-                      XRT_BO_FLAGS_HOST_ONLY,
-                      _kernel.group_id(3));
-    _bo_out_meta = xrt::bo(_device,
-                           _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t),
-                           XRT_BO_FLAGS_HOST_ONLY,
-                           _kernel.group_id(3));
-
     std::cout << "Writing data into buffer objects.\n";
 
     bufInstr = _bo_instr.map<void*>();
     std::memcpy(bufInstr, _instr_v.data(), _instr_v.size() * sizeof(int));
-
-    _bufInA = _bo_inA.map<tagged_int64_input_type*>();
-    _bufOut = _bo_out.map<tagged_int64_output_type*>();
-    _bufOutMeta = _bo_out_meta.map<std::int32_t*>();
-    std::memset(
-        _bufOut, 42, _VECTOR_SIZE * sizeof(tagged_int64_output_type) + _trace_size);
-    std::memset(
-        _bufOutMeta, 0, _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t));
-
-    _bo_out.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    _bo_out_meta.sync(XCL_BO_SYNC_BO_TO_DEVICE);
     _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-    _run = xrt::run(_kernel);
+    const auto output_metadata_size =
+        _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t);
+    _slots.resize(num_slots);
+    for (auto& slot : _slots) {
+        slot.input_bo = xrt::bo(_device,
+                                _VECTOR_SIZE * sizeof(tagged_int64_input_type),
+                                XRT_BO_FLAGS_HOST_ONLY,
+                                _kernel.group_id(3));
+        slot.output_bo = xrt::bo(_device,
+                                 _VECTOR_SIZE * sizeof(tagged_int64_output_type) +
+                                     _trace_size,
+                                 XRT_BO_FLAGS_HOST_ONLY,
+                                 _kernel.group_id(3));
+        slot.output_meta_bo = xrt::bo(_device,
+                                      output_metadata_size,
+                                      XRT_BO_FLAGS_HOST_ONLY,
+                                      _kernel.group_id(3));
 
-    _run.set_arg(0, _opcode_run);
-    _run.set_arg(1, _bo_instr);
-    _run.set_arg(2, _instr_v.size());
-    _run.set_arg(3, _bo_inA);
-    _run.set_arg(4, _bo_out);
-    _run.set_arg(5, _bo_out_meta);
+        slot.input = slot.input_bo.map<tagged_int64_input_type*>();
+        slot.output = slot.output_bo.map<tagged_int64_output_type*>();
+        slot.output_meta = slot.output_meta_bo.map<std::int32_t*>();
+        std::memset(slot.output,
+                    42,
+                    _VECTOR_SIZE * sizeof(tagged_int64_output_type) + _trace_size);
+        std::memset(slot.output_meta, 0, output_metadata_size);
+        slot.output_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        slot.output_meta_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+        slot.run = xrt::run(_kernel);
+        slot.run.set_arg(0, _opcode_run);
+        slot.run.set_arg(1, _bo_instr);
+        slot.run.set_arg(2, _instr_v.size());
+        slot.run.set_arg(3, slot.input_bo);
+        slot.run.set_arg(4, slot.output_bo);
+        slot.run.set_arg(5, slot.output_meta_bo);
+    }
 }
 
 mlir_aie_cpp_tagged_int32_to_int64_impl::~mlir_aie_cpp_tagged_int32_to_int64_impl() {}
@@ -125,25 +136,31 @@ int mlir_aie_cpp_tagged_int32_to_int64_impl::general_work(
     const uint64_t output_abs_start = nitems_written(0);
     int total_produced = 0;
 
+    const int depth = static_cast<int>(_slots.size());
+    const auto launch = [this, in](int chunk_idx) {
+        auto& slot = _slots[chunk_idx % _slots.size()];
+        std::memcpy(slot.input,
+                    in + (chunk_idx * _VECTOR_SIZE),
+                    _VECTOR_SIZE * sizeof(tagged_int64_input_type));
+        slot.input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        slot.run.start();
+    };
+
+    for (int i = 0; i < std::min(depth, n_chunks); ++i) {
+        launch(i);
+    }
     for (int i = 0; i < n_chunks; ++i) {
-        const tagged_int64_input_type* in_ptr = in + (i * _VECTOR_SIZE);
-
-        std::memcpy(
-            _bufInA, in_ptr, _VECTOR_SIZE * sizeof(tagged_int64_input_type));
-        _bo_inA.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-
-        _run.start();
-        _run.wait();
-
-        _bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-        _bo_out_meta.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        auto& slot = _slots[i % depth];
+        slot.run.wait();
+        slot.output_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        slot.output_meta_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
         for (int tile_idx = 0; tile_idx < _N_TILES; ++tile_idx) {
             const std::int32_t* tile_meta =
-                _bufOutMeta + (tile_idx * _METADATA_WORDS_PER_TILE);
+                slot.output_meta + (tile_idx * _METADATA_WORDS_PER_TILE);
 
             int tile_len = tile_meta[0];
-            const int tag_count = tile_meta[1];
+            const int tag_count = std::clamp(tile_meta[1], 0, _MAX_TAGS_PER_TILE);
             const int tile_start = tile_idx * _TILE_SIZE;
 
             if (tile_len < 0) {
@@ -153,7 +170,7 @@ int mlir_aie_cpp_tagged_int32_to_int64_impl::general_work(
             }
 
             std::memcpy(out + total_produced,
-                        _bufOut + tile_start,
+                        slot.output + tile_start,
                         tile_len * sizeof(tagged_int64_output_type));
 
             const uint64_t tile_abs_start = output_abs_start + total_produced;
@@ -173,6 +190,10 @@ int mlir_aie_cpp_tagged_int32_to_int64_impl::general_work(
             }
 
             total_produced += tile_len;
+        }
+
+        if (i + depth < n_chunks) {
+            launch(i + depth);
         }
     }
 
