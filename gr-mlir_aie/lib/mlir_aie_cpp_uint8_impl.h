@@ -19,6 +19,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 namespace gr {
 namespace mlir_aie {
@@ -29,6 +30,14 @@ using output_type = std::uint8_t;
 class mlir_aie_cpp_uint8_impl : public mlir_aie_cpp_uint8
 {
 private:
+    struct io_slot {
+        xrt::bo input_bo;
+        xrt::bo output_bo;
+        xrt::run run;
+        input_type* input = nullptr;
+        output_type* output = nullptr;
+    };
+
     const char* _path_xclbin;
     const char* _path_insts_bin;
     int _VECTOR_SIZE;
@@ -36,13 +45,10 @@ private:
     int _trace_size;
     unsigned int _opcode_run;
     xrt::kernel _kernel;
-    xrt::bo _bo_instr, _bo_inA, _bo_out;
+    xrt::bo _bo_instr;
     std::vector<uint32_t> _instr_v;
     xrt::device _device;
-    xrt::run _run;
-    
-    input_type *_bufInA ;        
-    output_type *_bufOut ;
+    std::vector<io_slot> _slots;
     void *bufInstr;
 
     
@@ -51,7 +57,8 @@ private:
 public:
     mlir_aie_cpp_uint8_impl(const char* path_xclbin,
                             const char* path_insts_bin,
-                            int VECTOR_SIZE);
+                            int VECTOR_SIZE,
+                            int num_slots);
     ~mlir_aie_cpp_uint8_impl();
 
     // Where all the action really happens

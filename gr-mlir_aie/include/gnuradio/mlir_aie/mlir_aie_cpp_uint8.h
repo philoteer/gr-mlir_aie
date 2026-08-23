@@ -34,7 +34,8 @@ public:
      */
     static sptr make(const char* path_xclbin = "aie-kernel-src/build/final.xclbin",
                      const char* path_insts_bin = "aie-kernel-src/build/insts.bin",
-                     int VECTOR_SIZE = 16384);
+                     int VECTOR_SIZE = 16384,
+                     int num_slots = 1);
 };
 
 } // namespace mlir_aie
