@@ -29,7 +29,7 @@ namespace py = pybind11;
     void bind_bfloat16_to_float32(py::module& m);
     void bind_complex64_to_cbfloat(py::module& m);
     void bind_cbfloat_to_complex64(py::module& m);
-    void bind_mlire_aie_cpp_int32_to_int16(py::module& m);
+    void bind_mlir_aie_cpp_int32_to_int16(py::module& m);
     void bind_mlir_aie_cpp_int32_source_1arg(py::module& m);
     void bind_mlir_aie_cpp_tagged_int32_to_int32(py::module& m);
     void bind_mlir_aie_cpp_80211_magsq_and_div(py::module& m);
@@ -83,7 +83,7 @@ PYBIND11_MODULE(mlir_aie_python, m)
     bind_bfloat16_to_float32(m);
     bind_complex64_to_cbfloat(m);
     bind_cbfloat_to_complex64(m);
-    bind_mlire_aie_cpp_int32_to_int16(m);
+    bind_mlir_aie_cpp_int32_to_int16(m);
     bind_mlir_aie_cpp_int32_source_1arg(m);
     bind_mlir_aie_cpp_tagged_int32_to_int32(m);
     bind_mlir_aie_cpp_80211_magsq_and_div(m);
