@@ -1,0 +1,3 @@
+Examples taken from https://github.com/Xilinx/mlir-aie and modified for my taste.
+
+You need to use chesscc complier instead of peano compiler for some DSP functions. AMD suggests installing vitis_aie_essentials if you need xchesscc (installation: see https://github.com/Xilinx/mlir-aie ), and it works, but some path variables are screwed up on the latest package, likely due to directory restructuring. I just fixed them manually.

@@ -1,0 +1,25 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+gr-mlir_aie/build/
+aie-kernel-src/build/
+
+# Compiled objects and libraries
+*.o
+*.obj
+*.a
+*.la
+*.lo
+*.so
+*.so.*
+speed.py
+
+__pycache__/
+
+
+aie-kernel-src/**/build/
+
+.DS_Store
+.idea/
+.vscode/

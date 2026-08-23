@@ -1,0 +1,47 @@
+id: mlir_aie_mlir_aie_cpp_int32
+label: mlir_aie_cpp_int32
+category: '[mlir_aie]'
+
+templates:
+  imports: from gnuradio import mlir_aie
+  make: mlir_aie.mlir_aie_cpp_int32(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE})
+
+#  Make one 'parameters' list entry for every parameter you want settable from the GUI.
+#     Keys include:
+#     * id (makes the value accessible as keyname, e.g. in the make entry)
+#     * label (label shown in the GUI)
+#     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
+#     * default
+parameters:
+- id: path_xclbin
+  label: path_xclbin
+  dtype: file_open
+  default: 'aie-kernel-src/build/final.xclbin'
+
+- id: path_insts_bin
+  label: path_insts_bin
+  dtype: file_open
+  default: 'aie-kernel-src/build/insts.bin'
+  
+- id: kernel_name
+  label: kernel_name
+  dtype: string
+  default: 'MLIR_AIE'
+
+- id: VECTOR_SIZE
+  label: VECTOR_SIZE
+  dtype: int
+  default: 4096
+
+inputs:
+-   label: in
+    domain: stream
+    dtype: int
+
+
+outputs:
+-   label: out
+    domain: stream
+    dtype: int
+
+file_format: 1

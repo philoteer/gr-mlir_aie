@@ -1,0 +1,47 @@
+id: mlir_aie_mlir_aie_cpp_equalizer_test
+label: mlir_aie_cpp_equalizer_test
+category: '[mlir_aie]'
+
+templates:
+  imports: from gnuradio import mlir_aie
+  make: mlir_aie.mlir_aie_cpp_equalizer_test(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency})
+  callbacks:
+  - set_nominal_frequency(${nominal_frequency})
+
+parameters:
+- id: path_xclbin
+  label: path_xclbin
+  dtype: file_open
+  default: 'build/final.xclbin'
+
+- id: path_insts_bin
+  label: path_insts_bin
+  dtype: file_open
+  default: 'build/insts.bin'
+
+- id: kernel_name
+  label: kernel_name
+  dtype: string
+  default: 'MLIR_AIE'
+
+- id: VECTOR_SIZE
+  label: VECTOR_SIZE
+  dtype: int
+  default: 4096
+
+- id: nominal_frequency
+  label: Nominal Frequency (Hz)
+  dtype: real
+  default: 2.417e9
+
+inputs:
+- label: in
+  domain: stream
+  dtype: complex
+
+outputs:
+- label: out
+  domain: stream
+  dtype: byte
+
+file_format: 1

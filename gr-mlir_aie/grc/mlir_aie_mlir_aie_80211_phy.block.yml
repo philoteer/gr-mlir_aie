@@ -1,0 +1,52 @@
+id: mlir_aie_mlir_aie_80211_phy
+label: mlir_aie_80211_phy
+category: '[mlir_aie]'
+
+templates:
+  imports: from gnuradio import mlir_aie
+  make: mlir_aie.mlir_aie_80211_phy(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency}, ${num_slots})
+  callbacks:
+  - set_nominal_frequency(${nominal_frequency})
+
+parameters:
+- id: path_xclbin
+  label: path_xclbin
+  dtype: file_open
+  default: 'aie-kernel-src/build/final.xclbin'
+
+- id: path_insts_bin
+  label: path_insts_bin
+  dtype: file_open
+  default: 'aie-kernel-src/build/insts.bin'
+
+- id: kernel_name
+  label: kernel_name
+  dtype: string
+  default: 'MLIR_AIE'
+
+- id: VECTOR_SIZE
+  label: VECTOR_SIZE
+  dtype: int
+  default: 4096
+
+- id: nominal_frequency
+  label: Nominal Frequency (Hz)
+  dtype: real
+  default: 2.417e9
+
+- id: num_slots
+  label: Num Slots (NPU pipelining depth)
+  dtype: int
+  default: 2
+
+inputs:
+- label: in
+  domain: stream
+  dtype: int
+
+outputs:
+- label: out
+  domain: stream
+  dtype: byte
+
+file_format: 1

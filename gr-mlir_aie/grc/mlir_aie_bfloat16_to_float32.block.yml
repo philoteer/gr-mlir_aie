@@ -1,0 +1,37 @@
+id: mlir_aie_bfloat16_to_float32
+label: bfloat16_to_float32
+category: '[mlir_aie]'
+
+templates:
+  imports: from gnuradio import mlir_aie
+  make: mlir_aie.bfloat16_to_float32()
+
+#  Make one 'parameters' list entry for every parameter you want settable from the GUI.
+#     Keys include:
+#     * id (makes the value accessible as keyname, e.g. in the make entry)
+#     * label (label shown in the GUI)
+#     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
+#     * default
+
+inputs:
+-   label: in
+    domain: stream
+    dtype: short
+#- label: ...
+#  dtype: ...
+#  vlen: ...
+#  optional: ...
+
+outputs:
+-   label: out
+    domain: stream
+    dtype: float
+#- label: ...
+#  domain: ...
+#  dtype: ...
+#  vlen: ...
+#  optional: ...
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1

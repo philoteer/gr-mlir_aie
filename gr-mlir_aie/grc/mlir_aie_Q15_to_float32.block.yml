@@ -1,0 +1,24 @@
+id: mlir_aie_Q15_to_float32
+label: Q15_to_float32
+category: '[mlir_aie]'
+
+templates:
+  imports: from gnuradio import mlir_aie
+  make: mlir_aie.Q15_to_float32()
+
+documentation: |-
+  Converts signed Q0.15 samples to float samples by scaling by 1/32768.
+
+inputs:
+-   label: in
+    domain: stream
+    dtype: short
+
+outputs:
+-   label: out
+    domain: stream
+    dtype: float
+
+#  'file_format' specifies the version of the GRC yml format used in the file
+#  and should usually not be changed.
+file_format: 1
