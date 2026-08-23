@@ -27,6 +27,18 @@ using sync_long_output_type = std::int32_t;
 class mlir_aie_cpp_sync_long_test_impl : public mlir_aie_cpp_sync_long_test
 {
 private:
+    struct io_slot {
+        xrt::bo input_bo;
+        xrt::bo input_meta_bo;
+        xrt::bo output_bo;
+        xrt::bo output_meta_bo;
+        xrt::run run;
+        sync_long_input_type* input = nullptr;
+        std::int32_t* input_meta = nullptr;
+        sync_long_output_type* output = nullptr;
+        std::int32_t* output_meta = nullptr;
+    };
+
     static constexpr int _MAX_TAGS_PER_TILE = 7;
     static constexpr int _N_TILES = 4;
     static constexpr int _METADATA_WORDS_PER_TILE = 2 + 2 * _MAX_TAGS_PER_TILE;
@@ -38,22 +50,20 @@ private:
     int _IN_VECTOR_SIZE;
     unsigned int _opcode_run;
     xrt::kernel _kernel;
-    xrt::bo _bo_instr, _bo_in, _bo_in_meta, _bo_out, _bo_out_meta;
+    xrt::bo _bo_instr;
     std::vector<uint32_t> _instr_v;
     std::vector<sync_long_input_type> _delay_history;
     xrt::device _device;
-    xrt::run _run;
+    std::vector<io_slot> _slots;
 
-    sync_long_input_type* _buf_in;
-    std::int32_t* _buf_in_meta;
-    sync_long_output_type* _buf_out;
-    std::int32_t* _buf_out_meta;
+    void* bufInstr;
 
 public:
     mlir_aie_cpp_sync_long_test_impl(const char* path_xclbin,
                                      const char* path_insts_bin,
                                      const char* kernel_name,
-                                     int VECTOR_SIZE);
+                                     int VECTOR_SIZE,
+                                     int num_slots);
     ~mlir_aie_cpp_sync_long_test_impl();
 
     // Where all the action really happens

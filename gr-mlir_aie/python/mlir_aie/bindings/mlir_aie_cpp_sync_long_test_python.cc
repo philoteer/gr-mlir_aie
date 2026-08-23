@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_sync_long_test.h) */
-/* BINDTOOL_HEADER_FILE_HASH(a82a8e5e7d213ef088a52d494a864eb6)                     */
+/* BINDTOOL_HEADER_FILE_HASH(d8886b66f838d55a4ac426ccb362546a)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -44,7 +44,8 @@ void bind_mlir_aie_cpp_sync_long_test(py::module& m)
              py::arg("path_xclbin") = "build/final.xclbin",
              py::arg("path_insts_bin") = "build/insts.bin",
              py::arg("kernel_name") = "MLIR_AIE",
-             py::arg("VECTOR_SIZE") = 4096)
+             py::arg("VECTOR_SIZE") = 4096,
+             py::arg("num_slots") = 1)
 
 
         ;
