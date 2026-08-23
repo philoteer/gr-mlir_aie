@@ -13,8 +13,8 @@
 /* If manual edits are made, the following tags should be modified accordingly.    */
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
-/* BINDTOOL_HEADER_FILE(mlire_aie_cpp_int32_to_int16.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(b5965fe81d7e71e53a6d61631c8857b1)                     */
+/* BINDTOOL_HEADER_FILE(mlir_aie_cpp_int32_to_int16.h)                                        */
+/* BINDTOOL_HEADER_FILE_HASH(519b841e79c99947397bad8202837fa6)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -23,21 +23,21 @@
 
 namespace py = pybind11;
 
-#include <gnuradio/mlir_aie/mlire_aie_cpp_int32_to_int16.h>
+#include <gnuradio/mlir_aie/mlir_aie_cpp_int32_to_int16.h>
 // pydoc.h is automatically generated in the build directory
-#include <mlire_aie_cpp_int32_to_int16_pydoc.h>
+#include <mlir_aie_cpp_int32_to_int16_pydoc.h>
 
-void bind_mlire_aie_cpp_int32_to_int16(py::module& m)
+void bind_mlir_aie_cpp_int32_to_int16(py::module& m)
 {
 
-    using mlire_aie_cpp_int32_to_int16    = gr::mlir_aie::mlire_aie_cpp_int32_to_int16;
+    using mlir_aie_cpp_int32_to_int16    = gr::mlir_aie::mlir_aie_cpp_int32_to_int16;
 
 
-    py::class_<mlire_aie_cpp_int32_to_int16, gr::block, gr::basic_block,
-        std::shared_ptr<mlire_aie_cpp_int32_to_int16>>(m, "mlire_aie_cpp_int32_to_int16", D(mlire_aie_cpp_int32_to_int16))
+    py::class_<mlir_aie_cpp_int32_to_int16, gr::block, gr::basic_block,
+        std::shared_ptr<mlir_aie_cpp_int32_to_int16>>(m, "mlir_aie_cpp_int32_to_int16", D(mlir_aie_cpp_int32_to_int16))
 
-        .def(py::init(&mlire_aie_cpp_int32_to_int16::make),
-           D(mlire_aie_cpp_int32_to_int16,make)
+        .def(py::init(&mlir_aie_cpp_int32_to_int16::make),
+           D(mlir_aie_cpp_int32_to_int16,make)
         )
         
 

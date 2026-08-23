@@ -18,7 +18,7 @@ install(FILES api.h
     bfloat16_to_float32.h
     complex64_to_cbfloat.h
     cbfloat_to_complex64.h
-    mlire_aie_cpp_int32_to_int16.h
+    mlir_aie_cpp_int32_to_int16.h
     mlir_aie_cpp_int32_source_1arg.h
     mlir_aie_cpp_tagged_int32_to_int32.h
     mlir_aie_cpp_80211_magsq_and_div.h

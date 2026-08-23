@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#ifndef INCLUDED_MLIR_AIE_MLIRE_AIE_CPP_INT32_TO_INT16_H
-#define INCLUDED_MLIR_AIE_MLIRE_AIE_CPP_INT32_TO_INT16_H
+#ifndef INCLUDED_MLIR_AIE_MLIR_AIE_CPP_INT32_TO_INT16_H
+#define INCLUDED_MLIR_AIE_MLIR_AIE_CPP_INT32_TO_INT16_H
 
 #include <gnuradio/block.h>
 #include <gnuradio/mlir_aie/api.h>
@@ -19,18 +19,18 @@ namespace mlir_aie {
  * \ingroup mlir_aie
  *
  */
-class MLIR_AIE_API mlire_aie_cpp_int32_to_int16 : virtual public gr::block
+class MLIR_AIE_API mlir_aie_cpp_int32_to_int16 : virtual public gr::block
 {
 public:
-    typedef std::shared_ptr<mlire_aie_cpp_int32_to_int16> sptr;
+    typedef std::shared_ptr<mlir_aie_cpp_int32_to_int16> sptr;
 
     /*!
      * \brief Return a shared_ptr to a new instance of
-     * mlir_aie::mlire_aie_cpp_int32_to_int16.
+     * mlir_aie::mlir_aie_cpp_int32_to_int16.
      *
-     * To avoid accidental use of raw pointers, mlir_aie::mlire_aie_cpp_int32_to_int16's
+     * To avoid accidental use of raw pointers, mlir_aie::mlir_aie_cpp_int32_to_int16's
      * constructor is in a private implementation
-     * class. mlir_aie::mlire_aie_cpp_int32_to_int16::make is the public interface for
+     * class. mlir_aie::mlir_aie_cpp_int32_to_int16::make is the public interface for
      * creating new instances.
      */
     static sptr make(const char* path_xclbin,
@@ -42,4 +42,4 @@ public:
 } // namespace mlir_aie
 } // namespace gr
 
-#endif /* INCLUDED_MLIR_AIE_MLIRE_AIE_CPP_INT32_TO_INT16_H */
+#endif /* INCLUDED_MLIR_AIE_MLIR_AIE_CPP_INT32_TO_INT16_H */

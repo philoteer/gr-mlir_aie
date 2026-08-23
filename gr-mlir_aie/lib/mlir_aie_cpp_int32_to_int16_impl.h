@@ -5,10 +5,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#ifndef INCLUDED_MLIR_AIE_MLIRE_AIE_CPP_INT32_TO_INT16_IMPL_H
-#define INCLUDED_MLIR_AIE_MLIRE_AIE_CPP_INT32_TO_INT16_IMPL_H
+#ifndef INCLUDED_MLIR_AIE_MLIR_AIE_CPP_INT32_TO_INT16_IMPL_H
+#define INCLUDED_MLIR_AIE_MLIR_AIE_CPP_INT32_TO_INT16_IMPL_H
 
-#include <gnuradio/mlir_aie/mlire_aie_cpp_int32_to_int16.h>
+#include <gnuradio/mlir_aie/mlir_aie_cpp_int32_to_int16.h>
 
 #include "runtime_lib/test_lib/test_utils.h"
 #include "xrt/xrt_bo.h"
@@ -26,7 +26,7 @@ namespace mlir_aie {
 using input_type = std::int32_t;
 using output_type = std::int16_t;
 
-class mlire_aie_cpp_int32_to_int16_impl : public mlire_aie_cpp_int32_to_int16
+class mlir_aie_cpp_int32_to_int16_impl : public mlir_aie_cpp_int32_to_int16
 {
 private:
     const char* _path_xclbin;
@@ -46,11 +46,11 @@ private:
     void *bufInstr;
 
 public:
-    mlire_aie_cpp_int32_to_int16_impl(const char* path_xclbin,
+    mlir_aie_cpp_int32_to_int16_impl(const char* path_xclbin,
                                       const char* path_insts_bin,
                                       const char* kernel_name,
                                       int VECTOR_SIZE);
-    ~mlire_aie_cpp_int32_to_int16_impl();
+    ~mlir_aie_cpp_int32_to_int16_impl();
 
     // Where all the action really happens
     void forecast(int noutput_items, gr_vector_int& ninput_items_required);
@@ -64,4 +64,4 @@ public:
 } // namespace mlir_aie
 } // namespace gr
 
-#endif /* INCLUDED_MLIR_AIE_MLIRE_AIE_CPP_INT32_TO_INT16_IMPL_H */
+#endif /* INCLUDED_MLIR_AIE_MLIR_AIE_CPP_INT32_TO_INT16_IMPL_H */

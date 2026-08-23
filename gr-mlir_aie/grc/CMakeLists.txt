@@ -18,7 +18,7 @@ install(FILES
     mlir_aie_bfloat16_to_float32.block.yml
     mlir_aie_complex64_to_cbfloat.block.yml
     mlir_aie_cbfloat_to_complex64.block.yml
-    mlir_aie_mlire_aie_cpp_int32_to_int16.block.yml
+    mlir_aie_mlir_aie_cpp_int32_to_int16.block.yml
     mlir_aie_mlir_aie_cpp_int32_source_1arg.block.yml
     mlir_aie_mlir_aie_cpp_tagged_int32_to_int32.block.yml
     mlir_aie_mlir_aie_cpp_80211_magsq_and_div.block.yml

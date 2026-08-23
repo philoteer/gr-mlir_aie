@@ -1,10 +1,10 @@
-id: mlir_aie_mlire_aie_cpp_int32_to_int16
-label: mlire_aie_cpp_int32_to_int16
+id: mlir_aie_mlir_aie_cpp_int32_to_int16
+label: mlir_aie_cpp_int32_to_int16
 category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlire_aie_cpp_int32_to_int16(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE})
+  make: mlir_aie.mlir_aie_cpp_int32_to_int16(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE})
 
 #  Make one 'parameters' list entry for every parameter you want settable from the GUI.
 #     Keys include:

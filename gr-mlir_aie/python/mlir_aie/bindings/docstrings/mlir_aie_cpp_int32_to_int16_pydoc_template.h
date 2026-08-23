@@ -16,12 +16,12 @@
 
 
 
- static const char *__doc_gr_mlir_aie_mlire_aie_cpp_int32_to_int16 = R"doc()doc";
+ static const char *__doc_gr_mlir_aie_mlir_aie_cpp_int32_to_int16 = R"doc()doc";
 
 
- static const char *__doc_gr_mlir_aie_mlire_aie_cpp_int32_to_int16_mlire_aie_cpp_int32_to_int16 = R"doc()doc";
+ static const char *__doc_gr_mlir_aie_mlir_aie_cpp_int32_to_int16_mlir_aie_cpp_int32_to_int16 = R"doc()doc";
 
 
- static const char *__doc_gr_mlir_aie_mlire_aie_cpp_int32_to_int16_make = R"doc()doc";
+ static const char *__doc_gr_mlir_aie_mlir_aie_cpp_int32_to_int16_make = R"doc()doc";
 
   

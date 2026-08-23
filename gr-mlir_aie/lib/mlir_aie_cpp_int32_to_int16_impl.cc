@@ -5,19 +5,19 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "mlire_aie_cpp_int32_to_int16_impl.h"
+#include "mlir_aie_cpp_int32_to_int16_impl.h"
 #include <gnuradio/io_signature.h>
 
 namespace gr {
 namespace mlir_aie {
 
-mlire_aie_cpp_int32_to_int16::sptr
-mlire_aie_cpp_int32_to_int16::make(const char* path_xclbin,
+mlir_aie_cpp_int32_to_int16::sptr
+mlir_aie_cpp_int32_to_int16::make(const char* path_xclbin,
                                    const char* path_insts_bin,
                                    const char* kernel_name,
                                    int VECTOR_SIZE)
 {
-    return gnuradio::make_block_sptr<mlire_aie_cpp_int32_to_int16_impl>(
+    return gnuradio::make_block_sptr<mlir_aie_cpp_int32_to_int16_impl>(
         path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE);
 }
 
@@ -25,12 +25,12 @@ mlire_aie_cpp_int32_to_int16::make(const char* path_xclbin,
 /*
  * The private constructor
  */
-mlire_aie_cpp_int32_to_int16_impl::mlire_aie_cpp_int32_to_int16_impl(
+mlir_aie_cpp_int32_to_int16_impl::mlir_aie_cpp_int32_to_int16_impl(
     const char* path_xclbin,
     const char* path_insts_bin,
     const char* kernel_name,
     int VECTOR_SIZE)
-    : gr::block("mlire_aie_cpp_int32_to_int16",
+    : gr::block("mlir_aie_cpp_int32_to_int16",
                 gr::io_signature::make(
                     1 /* min inputs */, 1 /* max inputs */, sizeof(input_type)),
                 gr::io_signature::make(
@@ -89,15 +89,15 @@ mlire_aie_cpp_int32_to_int16_impl::mlire_aie_cpp_int32_to_int16_impl(
 /*
  * Our virtual destructor.
  */
-mlire_aie_cpp_int32_to_int16_impl::~mlire_aie_cpp_int32_to_int16_impl() {}
+mlir_aie_cpp_int32_to_int16_impl::~mlir_aie_cpp_int32_to_int16_impl() {}
 
-void mlire_aie_cpp_int32_to_int16_impl::forecast(int noutput_items,
+void mlir_aie_cpp_int32_to_int16_impl::forecast(int noutput_items,
                                                  gr_vector_int& ninput_items_required)
 {
     ninput_items_required[0] = noutput_items;
 }
 
-int mlire_aie_cpp_int32_to_int16_impl::general_work(
+int mlir_aie_cpp_int32_to_int16_impl::general_work(
     int noutput_items,
     gr_vector_int& ninput_items,
     gr_vector_const_void_star& input_items,
