@@ -30,7 +30,6 @@ class mlir_aie_80211_phy_impl : public mlir_aie_80211_phy
 {
 private:
     static constexpr int _MAX_TAGS_PER_TILE = 16;
-    static constexpr int _N_TILES = 4;
     static constexpr int _CSI_SIZE = 64;
     static constexpr int _CSI_TAG_SIZE = 52;
 
@@ -83,6 +82,7 @@ private:
     const char* _path_xclbin;
     const char* _path_insts_bin;
     int _VECTOR_SIZE;
+    const int _N_TILES;
     int _TILE_SIZE;
     std::atomic<double> _nominal_frequency;
     const char* _kernel_name;
@@ -100,9 +100,10 @@ public:
     mlir_aie_80211_phy_impl(const char* path_xclbin,
                              const char* path_insts_bin,
                              const char* kernel_name,
-                             int VECTOR_SIZE,
-                             double nominal_frequency,
-                             int num_slots);
+                              int VECTOR_SIZE,
+                              double nominal_frequency,
+                              int num_slots,
+                              int N_TILES);
     ~mlir_aie_80211_phy_impl();
 
     // Where all the action really happens

@@ -24,27 +24,42 @@ namespace mlir_aie {
 mlir_aie_80211_phy::sptr mlir_aie_80211_phy::make(const char* path_xclbin,
                                                    const char* path_insts_bin,
                                                    const char* kernel_name,
-                                                   int VECTOR_SIZE,
-                                                   double nominal_frequency,
-                                                   int num_slots)
+                                                    int VECTOR_SIZE,
+                                                    double nominal_frequency,
+                                                    int num_slots,
+                                                    int N_TILES)
 {
     return gnuradio::make_block_sptr<mlir_aie_80211_phy_impl>(
-        path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE, nominal_frequency, num_slots);
+        path_xclbin,
+        path_insts_bin,
+        kernel_name,
+        VECTOR_SIZE,
+        nominal_frequency,
+        num_slots,
+        N_TILES);
 }
 
 mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
                                                  const char* path_insts_bin,
                                                  const char* kernel_name,
-                                                 int VECTOR_SIZE,
-                                                 double nominal_frequency,
-                                                 int num_slots)
+                                                  int VECTOR_SIZE,
+                                                  double nominal_frequency,
+                                                  int num_slots,
+                                                  int N_TILES)
     : gr::block("mlir_aie_80211_phy",
                  gr::io_signature::make(1, 1, sizeof(phy_input_type)),
                  gr::io_signature::make(1, 1, sizeof(phy_output_type))),
+      _N_TILES(N_TILES),
       _nominal_frequency(nominal_frequency)
 {
     if (num_slots < 1) {
         throw std::invalid_argument("num_slots must be at least 1");
+    }
+    if (_N_TILES < 1) {
+        throw std::invalid_argument("N_TILES must be at least 1");
+    }
+    if (VECTOR_SIZE <= 0 || VECTOR_SIZE % _N_TILES != 0) {
+        throw std::invalid_argument("VECTOR_SIZE must be positive and divisible by N_TILES");
     }
     _path_xclbin = path_xclbin;
     _path_insts_bin = path_insts_bin;
