@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_80211_magsq_and_div.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(9f8ef0dd68d9d5c370778c89fcf4d9e5)                     */
+/* BINDTOOL_HEADER_FILE_HASH(1574f5eab982afbdec3f02623f200522)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,7 +37,12 @@ void bind_mlir_aie_cpp_80211_magsq_and_div(py::module& m)
         std::shared_ptr<mlir_aie_cpp_80211_magsq_and_div>>(m, "mlir_aie_cpp_80211_magsq_and_div", D(mlir_aie_cpp_80211_magsq_and_div))
 
         .def(py::init(&mlir_aie_cpp_80211_magsq_and_div::make),
-           D(mlir_aie_cpp_80211_magsq_and_div,make)
+           D(mlir_aie_cpp_80211_magsq_and_div,make),
+           py::arg("path_xclbin") = "aie-kernel-src/build/final.xclbin",
+           py::arg("path_insts_bin") = "aie-kernel-src/build/insts.bin",
+           py::arg("kernel_name") = "MLIR_AIE",
+           py::arg("VECTOR_SIZE") = 4096,
+           py::arg("num_slots") = 1
         )
         
 
@@ -49,8 +54,6 @@ void bind_mlir_aie_cpp_80211_magsq_and_div(py::module& m)
 
 
 }
-
-
 
 
 

@@ -29,6 +29,16 @@ using magsq_output_type = std::int8_t;
 class mlir_aie_cpp_80211_magsq_and_div_impl : public mlir_aie_cpp_80211_magsq_and_div
 {
 private:
+    struct io_slot {
+        xrt::bo ac_input_bo;
+        xrt::bo mag_input_bo;
+        xrt::bo output_bo;
+        xrt::run run;
+        magsq_complex_input_type* ac_input = nullptr;
+        magsq_mag_input_type* mag_input = nullptr;
+        magsq_output_type* output = nullptr;
+    };
+
     const char* _path_xclbin;
     const char* _path_insts_bin;
     int _VECTOR_SIZE;
@@ -36,21 +46,19 @@ private:
     int _trace_size;
     unsigned int _opcode_run;
     xrt::kernel _kernel;
-    xrt::bo _bo_instr, _bo_ac_in, _bo_mag_in, _bo_out;
+    xrt::bo _bo_instr;
     std::vector<std::uint32_t> _instr_v;
     xrt::device _device;
-    xrt::run _run;
+    std::vector<io_slot> _slots;
 
-    magsq_complex_input_type* _bufAcIn;
-    magsq_mag_input_type* _bufMagIn;
-    magsq_output_type* _bufOut;
     void* _bufInstr;
 
 public:
     mlir_aie_cpp_80211_magsq_and_div_impl(const char* path_xclbin,
-                                          const char* path_insts_bin,
-                                          const char* kernel_name,
-                                          int VECTOR_SIZE);
+                                           const char* path_insts_bin,
+                                           const char* kernel_name,
+                                           int VECTOR_SIZE,
+                                           int num_slots);
     ~mlir_aie_cpp_80211_magsq_and_div_impl();
 
     // Where all the action really happens
