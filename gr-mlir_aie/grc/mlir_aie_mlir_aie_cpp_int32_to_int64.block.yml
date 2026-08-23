@@ -4,7 +4,7 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_cpp_int32_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE})
+  make: mlir_aie.mlir_aie_cpp_int32_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${num_slots})
 
 parameters:
 - id: path_xclbin
@@ -26,6 +26,11 @@ parameters:
   label: VECTOR_SIZE
   dtype: int
   default: 4096
+
+- id: num_slots
+  label: Number of slots
+  dtype: int
+  default: 1
 
 inputs:
 -   label: in
