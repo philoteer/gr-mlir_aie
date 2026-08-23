@@ -21,16 +21,18 @@ namespace mlir_aie {
 mlir_aie_cpp_fft_test::sptr mlir_aie_cpp_fft_test::make(const char* path_xclbin,
                                                         const char* path_insts_bin,
                                                         const char* kernel_name,
-                                                        int VECTOR_SIZE)
+                                                        int VECTOR_SIZE,
+                                                        int num_slots)
 {
     return gnuradio::make_block_sptr<mlir_aie_cpp_fft_test_impl>(
-        path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE);
+        path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE, num_slots);
 }
 
 mlir_aie_cpp_fft_test_impl::mlir_aie_cpp_fft_test_impl(const char* path_xclbin,
                                                        const char* path_insts_bin,
                                                        const char* kernel_name,
-                                                       int VECTOR_SIZE)
+                                                       int VECTOR_SIZE,
+                                                       int num_slots)
     : gr::block("mlir_aie_cpp_fft_test",
                 gr::io_signature::make(1, 1, sizeof(fft_input_type)),
                 gr::io_signature::make(1, 1, sizeof(fft_output_type))),
@@ -40,6 +42,9 @@ mlir_aie_cpp_fft_test_impl::mlir_aie_cpp_fft_test_impl(const char* path_xclbin,
 {
     if (_VECTOR_SIZE <= 0 || _VECTOR_SIZE % _N_TILES != 0) {
         throw std::invalid_argument("VECTOR_SIZE must be a positive multiple of 4");
+    }
+    if (num_slots < 1) {
+        throw std::invalid_argument("num_slots must be at least 1");
     }
 
     set_tag_propagation_policy(TPP_DONT);
@@ -52,49 +57,45 @@ mlir_aie_cpp_fft_test_impl::mlir_aie_cpp_fft_test_impl(const char* path_xclbin,
                         _instr_v.size() * sizeof(uint32_t),
                         XCL_BO_FLAGS_CACHEABLE,
                         _kernel.group_id(1));
-    _bo_in = xrt::bo(_device,
-                     _VECTOR_SIZE * sizeof(fft_input_type),
-                     XRT_BO_FLAGS_HOST_ONLY,
-                     _kernel.group_id(3));
-    _bo_in_meta = xrt::bo(_device,
-                          _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t),
-                          XRT_BO_FLAGS_HOST_ONLY,
-                          _kernel.group_id(3));
-    _bo_out = xrt::bo(_device,
-                      _VECTOR_SIZE * sizeof(fft_output_type),
-                      XRT_BO_FLAGS_HOST_ONLY,
-                      _kernel.group_id(3));
-    _bo_out_meta = xrt::bo(_device,
-                           _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t),
-                           XRT_BO_FLAGS_HOST_ONLY,
-                           _kernel.group_id(3));
-
-    auto* buf_instr = _bo_instr.map<void*>();
-    std::memcpy(buf_instr, _instr_v.data(), _instr_v.size() * sizeof(uint32_t));
-    _buf_in = _bo_in.map<fft_input_type*>();
-    _buf_in_meta = _bo_in_meta.map<std::int32_t*>();
-    _buf_out = _bo_out.map<fft_output_type*>();
-    _buf_out_meta = _bo_out_meta.map<std::int32_t*>();
-
-    std::memset(_buf_in, 0, _VECTOR_SIZE * sizeof(fft_input_type));
-    std::memset(
-        _buf_in_meta, 0, _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t));
-    std::memset(_buf_out, 0, _VECTOR_SIZE * sizeof(fft_output_type));
-    std::memset(
-        _buf_out_meta, 0, _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t));
-
+    bufInstr = _bo_instr.map<void*>();
+    std::memcpy(bufInstr, _instr_v.data(), _instr_v.size() * sizeof(uint32_t));
     _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    _bo_out.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    _bo_out_meta.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-    _run = xrt::run(_kernel);
-    _run.set_arg(0, _opcode_run);
-    _run.set_arg(1, _bo_instr);
-    _run.set_arg(2, _instr_v.size());
-    _run.set_arg(3, _bo_in);
-    _run.set_arg(4, _bo_in_meta);
-    _run.set_arg(5, _bo_out);
-    _run.set_arg(6, _bo_out_meta);
+    const auto metadata_size = _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t);
+    _slots.resize(num_slots);
+    for (auto& slot : _slots) {
+        slot.input_bo = xrt::bo(_device,
+                                _VECTOR_SIZE * sizeof(fft_input_type),
+                                XRT_BO_FLAGS_HOST_ONLY,
+                                _kernel.group_id(3));
+        slot.input_meta_bo =
+            xrt::bo(_device, metadata_size, XRT_BO_FLAGS_HOST_ONLY, _kernel.group_id(3));
+        slot.output_bo = xrt::bo(_device,
+                                 _VECTOR_SIZE * sizeof(fft_output_type),
+                                 XRT_BO_FLAGS_HOST_ONLY,
+                                 _kernel.group_id(3));
+        slot.output_meta_bo =
+            xrt::bo(_device, metadata_size, XRT_BO_FLAGS_HOST_ONLY, _kernel.group_id(3));
+
+        slot.input = slot.input_bo.map<fft_input_type*>();
+        slot.input_meta = slot.input_meta_bo.map<std::int32_t*>();
+        slot.output = slot.output_bo.map<fft_output_type*>();
+        slot.output_meta = slot.output_meta_bo.map<std::int32_t*>();
+
+        std::memset(slot.output, 0, _VECTOR_SIZE * sizeof(fft_output_type));
+        std::memset(slot.output_meta, 0, metadata_size);
+        slot.output_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        slot.output_meta_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+        slot.run = xrt::run(_kernel);
+        slot.run.set_arg(0, _opcode_run);
+        slot.run.set_arg(1, _bo_instr);
+        slot.run.set_arg(2, _instr_v.size());
+        slot.run.set_arg(3, slot.input_bo);
+        slot.run.set_arg(4, slot.input_meta_bo);
+        slot.run.set_arg(5, slot.output_bo);
+        slot.run.set_arg(6, slot.output_meta_bo);
+    }
 }
 
 mlir_aie_cpp_fft_test_impl::~mlir_aie_cpp_fft_test_impl() {}
@@ -124,20 +125,23 @@ int mlir_aie_cpp_fft_test_impl::general_work(int noutput_items,
     const uint64_t output_abs_start = nitems_written(0);
     int total_produced = 0;
 
-    for (int chunk_idx = 0; chunk_idx < n_chunks; ++chunk_idx) {
+    const int depth = static_cast<int>(_slots.size());
+    const auto launch = [this, in, input_abs_start, tag_key](int chunk_idx) {
+        auto& slot = _slots[chunk_idx % _slots.size()];
         const int chunk_start = chunk_idx * _VECTOR_SIZE;
         const uint64_t chunk_abs_start = input_abs_start + chunk_start;
-        std::memset(
-            _buf_in_meta, 0, _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t));
+        std::memset(slot.input_meta,
+                    0,
+                    _N_TILES * _METADATA_WORDS_PER_TILE * sizeof(std::int32_t));
 
         for (int tile_idx = 0; tile_idx < _N_TILES; ++tile_idx) {
             const int src_start = chunk_start + tile_idx * _TILE_SIZE;
             const int src_end = src_start + _TILE_SIZE;
             const int dst_start = tile_idx * _TILE_SIZE;
 
-            std::copy(in + src_start, in + src_end, _buf_in + dst_start);
+            std::copy(in + src_start, in + src_end, slot.input + dst_start);
 
-            auto* tile_meta = _buf_in_meta + tile_idx * _METADATA_WORDS_PER_TILE;
+            auto* tile_meta = slot.input_meta + tile_idx * _METADATA_WORDS_PER_TILE;
             const uint64_t tile_abs_start = chunk_abs_start + tile_idx * _TILE_SIZE;
             std::vector<tag_t> tags;
             get_tags_in_range(
@@ -159,21 +163,29 @@ int mlir_aie_cpp_fft_test_impl::general_work(int noutput_items,
             }
         }
 
-        _bo_in.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-        _bo_in_meta.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-        _run.start();
-        _run.wait();
-        _bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
-        _bo_out_meta.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        slot.input_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        slot.input_meta_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        slot.run.start();
+    };
+
+    for (int i = 0; i < std::min(depth, n_chunks); ++i) {
+        launch(i);
+    }
+    for (int i = 0; i < n_chunks; ++i) {
+        auto& slot = _slots[i % depth];
+        slot.run.wait();
+        slot.output_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+        slot.output_meta_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
         for (int tile_idx = 0; tile_idx < _N_TILES; ++tile_idx) {
-            const auto* tile_meta = _buf_out_meta + tile_idx * _METADATA_WORDS_PER_TILE;
+            const auto* tile_meta =
+                slot.output_meta + tile_idx * _METADATA_WORDS_PER_TILE;
             const int tile_len = std::clamp(tile_meta[0], 0, _TILE_SIZE);
             const int tag_count = std::clamp(tile_meta[1], 0, _MAX_TAGS_PER_TILE);
             const int tile_start = tile_idx * _TILE_SIZE;
 
-            std::copy(_buf_out + tile_start,
-                      _buf_out + tile_start + tile_len,
+            std::copy(slot.output + tile_start,
+                      slot.output + tile_start + tile_len,
                       out + total_produced);
 
             const uint64_t tile_abs_start = output_abs_start + total_produced;
@@ -190,6 +202,10 @@ int mlir_aie_cpp_fft_test_impl::general_work(int noutput_items,
                 }
             }
             total_produced += tile_len;
+        }
+
+        if (i + depth < n_chunks) {
+            launch(i + depth);
         }
     }
 

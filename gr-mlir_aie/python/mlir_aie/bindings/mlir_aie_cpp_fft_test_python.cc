@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_fft_test.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(40aa094c819519f7580ec42530595a55)                     */
+/* BINDTOOL_HEADER_FILE_HASH(53b0403fb749283b9246934300a74640)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,7 +37,12 @@ void bind_mlir_aie_cpp_fft_test(py::module& m)
         std::shared_ptr<mlir_aie_cpp_fft_test>>(m, "mlir_aie_cpp_fft_test", D(mlir_aie_cpp_fft_test))
 
         .def(py::init(&mlir_aie_cpp_fft_test::make),
-           D(mlir_aie_cpp_fft_test,make)
+           D(mlir_aie_cpp_fft_test,make),
+           py::arg("path_xclbin"),
+           py::arg("path_insts_bin"),
+           py::arg("kernel_name"),
+           py::arg("VECTOR_SIZE"),
+           py::arg("num_slots") = 1
         )
         
 
@@ -49,8 +54,6 @@ void bind_mlir_aie_cpp_fft_test(py::module& m)
 
 
 }
-
-
 
 
 
