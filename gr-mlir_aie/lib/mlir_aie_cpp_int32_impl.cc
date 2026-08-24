@@ -110,7 +110,7 @@ mlir_aie_cpp_int32_impl::~mlir_aie_cpp_int32_impl() {}
 void mlir_aie_cpp_int32_impl::forecast(int noutput_items,
                                        gr_vector_int& ninput_items_required)
 {
-    ninput_items_required[0] = noutput_items;
+    ninput_items_required[0] = std::max(_VECTOR_SIZE, noutput_items);
 }
 
 int mlir_aie_cpp_int32_impl::general_work(int noutput_items,

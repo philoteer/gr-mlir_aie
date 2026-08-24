@@ -55,6 +55,7 @@ mlir_aie_cpp_80211_magsq_and_div_impl::mlir_aie_cpp_80211_magsq_and_div_impl(
     _path_insts_bin = path_insts_bin;
     _VECTOR_SIZE = VECTOR_SIZE;
     _kernel_name = kernel_name;
+    set_output_multiple(_VECTOR_SIZE);
     _trace_size = 0;
     _opcode_run = 3;
 
@@ -115,8 +116,9 @@ mlir_aie_cpp_80211_magsq_and_div_impl::~mlir_aie_cpp_80211_magsq_and_div_impl() 
 void mlir_aie_cpp_80211_magsq_and_div_impl::forecast(int noutput_items,
                                                       gr_vector_int& ninput_items_required)
 {
-    ninput_items_required[0] = noutput_items;
-    ninput_items_required[1] = noutput_items;
+    const int required = std::max(_VECTOR_SIZE, noutput_items);
+    ninput_items_required[0] = required;
+    ninput_items_required[1] = required;
 }
 
 int mlir_aie_cpp_80211_magsq_and_div_impl::general_work(

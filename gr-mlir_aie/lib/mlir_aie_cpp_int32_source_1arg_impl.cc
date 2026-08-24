@@ -9,6 +9,7 @@
 #include <gnuradio/io_signature.h>
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace gr {
 namespace mlir_aie {
@@ -41,6 +42,10 @@ mlir_aie_cpp_int32_source_1arg_impl::mlir_aie_cpp_int32_source_1arg_impl(
     _path_xclbin = path_xclbin;
     _path_insts_bin = path_insts_bin;
     _VECTOR_SIZE = VECTOR_SIZE;
+    if (_VECTOR_SIZE <= 0) {
+        throw std::invalid_argument("VECTOR_SIZE must be positive");
+    }
+    set_output_multiple(_VECTOR_SIZE);
     _kernel_name =  kernel_name; 
     _trace_size = 0;
     _opcode_run = 3;

@@ -159,7 +159,7 @@ double mlir_aie_80211_phy_impl::nominal_frequency() const
 void mlir_aie_80211_phy_impl::forecast(int noutput_items,
                                        gr_vector_int& ninput_items_required)
 {
-    ninput_items_required[0] = noutput_items;
+    ninput_items_required[0] = std::max(_VECTOR_SIZE, noutput_items);
 }
 
 int mlir_aie_80211_phy_impl::general_work(int noutput_items,

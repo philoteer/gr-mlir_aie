@@ -57,6 +57,7 @@ mlir_aie_cpp_bfloat16_impl::mlir_aie_cpp_bfloat16_impl(const char* path_xclbin,
     _path_insts_bin = path_insts_bin;
     _VECTOR_SIZE = VECTOR_SIZE;
     _kernel_name =  kernel_name; 
+    set_output_multiple(_VECTOR_SIZE);
     _trace_size = 0;
     _opcode_run = 3;
 
@@ -114,7 +115,7 @@ mlir_aie_cpp_bfloat16_impl::~mlir_aie_cpp_bfloat16_impl() {}
 void mlir_aie_cpp_bfloat16_impl::forecast(int noutput_items,
                                           gr_vector_int& ninput_items_required)
 {
-    ninput_items_required[0] = noutput_items;
+    ninput_items_required[0] = std::max(_VECTOR_SIZE, noutput_items);
 }
 
 

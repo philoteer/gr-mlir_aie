@@ -44,11 +44,10 @@ class mlir_aie_python_bfloat16(gr.basic_block):
         self.kernel_handle = DefaultNPURuntime.load(npu_kernel)
         self.out_buf = iron.zeros(VECTOR_SIZE, dtype=DTYPE_NPU)
         self.VECTOR_SIZE = VECTOR_SIZE
+        self.set_output_multiple(VECTOR_SIZE)
 
-    #TODO implement forecast()
     def forecast(self, noutput_items, ninputs):
-        #ninput_items_required = [min(self.VECTOR_SIZE, noutput_items)] * ninputs
-        ninput_items_required = [noutput_items] * ninputs   
+        ninput_items_required = [max(self.VECTOR_SIZE, noutput_items)] * ninputs
         return ninput_items_required
 
     def general_work(self, input_items, output_items):

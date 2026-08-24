@@ -53,6 +53,7 @@ class mlir_aie_python_tagged_int32_to_int32(gr.basic_block):
         self.out_meta_buf = iron.zeros(
             N_TILES * METADATA_WORDS_PER_TILE, dtype=METADATA_DTYPE)
         self.VECTOR_SIZE = VECTOR_SIZE
+        self.set_output_multiple(VECTOR_SIZE)
         self.N_TILES = N_TILES
         self.TILE_SIZE = VECTOR_SIZE // self.N_TILES
 
@@ -61,7 +62,7 @@ class mlir_aie_python_tagged_int32_to_int32(gr.basic_block):
         self.tag_srcid = pmt.intern("sync_short")
 
     def forecast(self, noutput_items, ninputs):
-        ninput_items_required = [noutput_items] * ninputs
+        ninput_items_required = [max(self.VECTOR_SIZE, noutput_items)] * ninputs
         return ninput_items_required
 
     def general_work(self, input_items, output_items):

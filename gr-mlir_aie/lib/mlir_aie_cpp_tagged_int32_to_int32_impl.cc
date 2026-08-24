@@ -61,6 +61,7 @@ mlir_aie_cpp_tagged_int32_to_int32_impl::mlir_aie_cpp_tagged_int32_to_int32_impl
     }
     _TILE_SIZE = _VECTOR_SIZE / _N_TILES;
     _kernel_name = kernel_name;
+    set_output_multiple(_VECTOR_SIZE);
     _trace_size = 0;
     _opcode_run = 3;
 
@@ -133,7 +134,7 @@ mlir_aie_cpp_tagged_int32_to_int32_impl::~mlir_aie_cpp_tagged_int32_to_int32_imp
 void mlir_aie_cpp_tagged_int32_to_int32_impl::forecast(
     int noutput_items, gr_vector_int& ninput_items_required)
 {
-    ninput_items_required[0] = noutput_items;
+    ninput_items_required[0] = std::max(_VECTOR_SIZE, noutput_items);
 }
 
 int mlir_aie_cpp_tagged_int32_to_int32_impl::general_work(

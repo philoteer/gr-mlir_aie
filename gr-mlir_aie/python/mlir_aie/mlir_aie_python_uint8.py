@@ -8,8 +8,6 @@
 
 #TODO0: generalize better
 #TODO1: make vector size adjustable
-#TODO2: implement forecast() (currently left as 1:1)
-
 import numpy
 from gnuradio import gr
 
@@ -44,11 +42,10 @@ class mlir_aie_python_uint8(gr.basic_block):
         self.kernel_handle = DefaultNPURuntime.load(npu_kernel)
         self.out_buf = iron.zeros(VECTOR_SIZE, dtype=DTYPE)
         self.VECTOR_SIZE = VECTOR_SIZE
+        self.set_output_multiple(VECTOR_SIZE)
 
-    #TODO implement forecast()
     def forecast(self, noutput_items, ninputs):
-        #ninput_items_required = [min(self.VECTOR_SIZE, noutput_items)] * ninputs
-        ninput_items_required = [noutput_items] * ninputs   
+        ninput_items_required = [max(self.VECTOR_SIZE, noutput_items)] * ninputs
         return ninput_items_required
 
     def general_work(self, input_items, output_items):
