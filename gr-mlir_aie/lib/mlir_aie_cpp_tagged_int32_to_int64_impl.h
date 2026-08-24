@@ -38,12 +38,12 @@ private:
     };
 
     static constexpr int _MAX_TAGS_PER_TILE = 31;
-    static constexpr int _N_TILES = 4;
     static constexpr int _METADATA_WORDS_PER_TILE = 2 + 2 * _MAX_TAGS_PER_TILE;
 
     const char* _path_xclbin;
     const char* _path_insts_bin;
     int _VECTOR_SIZE;
+    const int _N_TILES;
     int _TILE_SIZE;
     const char* _kernel_name;
     int _trace_size;
@@ -61,7 +61,8 @@ public:
                                              const char* path_insts_bin,
                                              const char* kernel_name,
                                              int VECTOR_SIZE,
-                                             int num_slots);
+                                             int num_slots,
+                                             int N_TILES);
     ~mlir_aie_cpp_tagged_int32_to_int64_impl();
 
     // Where all the action really happens

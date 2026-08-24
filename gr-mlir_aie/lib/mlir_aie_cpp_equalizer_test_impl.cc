@@ -23,16 +23,18 @@ mlir_aie_cpp_equalizer_test::sptr
 mlir_aie_cpp_equalizer_test::make(const char* path_xclbin,
                                   const char* path_insts_bin,
                                   const char* kernel_name,
-                                  int VECTOR_SIZE,
-                                  double nominal_frequency,
-                                  int num_slots)
+                                   int VECTOR_SIZE,
+                                   double nominal_frequency,
+                                   int num_slots,
+                                   int N_TILES)
 {
     return gnuradio::make_block_sptr<mlir_aie_cpp_equalizer_test_impl>(path_xclbin,
                                                                        path_insts_bin,
                                                                        kernel_name,
                                                                        VECTOR_SIZE,
                                                                        nominal_frequency,
-                                                                       num_slots);
+                                                                       num_slots,
+                                                                       N_TILES);
 }
 
 mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
@@ -41,21 +43,27 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     const char* kernel_name,
     int VECTOR_SIZE,
     double nominal_frequency,
-    int num_slots)
+    int num_slots,
+    int N_TILES)
     : gr::block("mlir_aie_cpp_equalizer_test",
                 gr::io_signature::make(1, 1, sizeof(equalizer_input_type)),
                 gr::io_signature::make(1, 1, sizeof(equalizer_output_type))),
       _VECTOR_SIZE(VECTOR_SIZE),
-      _TILE_SIZE(VECTOR_SIZE / _N_TILES),
+      _N_TILES(N_TILES),
+      _TILE_SIZE(0),
       _nominal_frequency(nominal_frequency),
       _opcode_run(3)
 {
+    if (_N_TILES < 1) {
+        throw std::invalid_argument("N_TILES must be at least 1");
+    }
     if (_VECTOR_SIZE <= 0 || _VECTOR_SIZE % _N_TILES != 0) {
-        throw std::invalid_argument("VECTOR_SIZE must be a positive multiple of 4");
+        throw std::invalid_argument("VECTOR_SIZE must be positive and divisible by N_TILES");
     }
     if (num_slots < 1) {
         throw std::invalid_argument("num_slots must be at least 1");
     }
+    _TILE_SIZE = _VECTOR_SIZE / _N_TILES;
 
     set_tag_propagation_policy(TPP_DONT);
     set_output_multiple(_VECTOR_SIZE);

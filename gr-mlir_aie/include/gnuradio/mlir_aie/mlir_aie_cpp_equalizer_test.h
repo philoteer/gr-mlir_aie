@@ -41,7 +41,8 @@ public:
                      const char* kernel_name,
                      int VECTOR_SIZE,
                      double nominal_frequency,
-                     int num_slots = 1);
+                     int num_slots = 1,
+                     int N_TILES = 4);
 
     virtual void set_nominal_frequency(double nominal_frequency) = 0;
     virtual double nominal_frequency() const = 0;

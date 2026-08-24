@@ -20,7 +20,6 @@ OUTPUT_DTYPE = np.int32
 METADATA_DTYPE = np.int32
 
 MAX_TAGS_PER_TILE = 7
-N_TILES = 4
 METADATA_WORDS_PER_TILE = 2 + 2 * MAX_TAGS_PER_TILE
 
 
@@ -30,9 +29,15 @@ class mlir_aie_python_tagged_int32_to_int32(gr.basic_block):
     """
     def __init__(self,
                  path_xclbin="aie-kernel-src/build/final.xclbin",
-                 path_insts_bin="aie-kernel-src/build/insts.bin",
-                 kernel_name="MLIR_AIE",
-                 VECTOR_SIZE=4096):
+                  path_insts_bin="aie-kernel-src/build/insts.bin",
+                  kernel_name="MLIR_AIE",
+                  VECTOR_SIZE=4096,
+                  N_TILES=4):
+        if N_TILES < 1:
+            raise ValueError("N_TILES must be at least 1")
+        if VECTOR_SIZE <= 0 or VECTOR_SIZE % N_TILES != 0:
+            raise ValueError("VECTOR_SIZE must be positive and divisible by N_TILES")
+
         gr.basic_block.__init__(self,
             name="mlir_aie_python_tagged_int32_to_int32",
             in_sig=[INPUT_DTYPE],
@@ -48,7 +53,8 @@ class mlir_aie_python_tagged_int32_to_int32(gr.basic_block):
         self.out_meta_buf = iron.zeros(
             N_TILES * METADATA_WORDS_PER_TILE, dtype=METADATA_DTYPE)
         self.VECTOR_SIZE = VECTOR_SIZE
-        self.TILE_SIZE = VECTOR_SIZE // N_TILES
+        self.N_TILES = N_TILES
+        self.TILE_SIZE = VECTOR_SIZE // self.N_TILES
 
         self.set_tag_propagation_policy(gr.TPP_DONT)
         self.tag_key = pmt.intern("wifi_start")
@@ -83,7 +89,7 @@ class mlir_aie_python_tagged_int32_to_int32(gr.basic_block):
             npu_output = self.out_buf.numpy()
             metadata = self.out_meta_buf.numpy()
 
-            for tile_idx in range(N_TILES):
+            for tile_idx in range(self.N_TILES):
                 meta_start = tile_idx * METADATA_WORDS_PER_TILE
                 tile_meta = metadata[
                     meta_start:meta_start + METADATA_WORDS_PER_TILE]

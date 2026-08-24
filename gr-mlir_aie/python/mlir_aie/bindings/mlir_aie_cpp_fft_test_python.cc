@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_fft_test.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(53b0403fb749283b9246934300a74640)                     */
+/* BINDTOOL_HEADER_FILE_HASH(ed10b26ea572b8894a8ebd6d162b18d4)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -42,7 +42,8 @@ void bind_mlir_aie_cpp_fft_test(py::module& m)
            py::arg("path_insts_bin"),
            py::arg("kernel_name"),
            py::arg("VECTOR_SIZE"),
-           py::arg("num_slots") = 1
+           py::arg("num_slots") = 1,
+           py::arg("N_TILES") = 4
         )
         
 
@@ -54,8 +55,6 @@ void bind_mlir_aie_cpp_fft_test(py::module& m)
 
 
 }
-
-
 
 
 

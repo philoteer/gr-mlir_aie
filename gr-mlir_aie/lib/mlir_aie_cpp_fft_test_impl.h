@@ -28,7 +28,6 @@ class mlir_aie_cpp_fft_test_impl : public mlir_aie_cpp_fft_test
 {
 private:
     static constexpr int _MAX_TAGS_PER_TILE = 31;
-    static constexpr int _N_TILES = 4;
     static constexpr int _METADATA_WORDS_PER_TILE = 2 + 2 * _MAX_TAGS_PER_TILE;
 
     struct io_slot {
@@ -44,6 +43,7 @@ private:
     };
 
     int _VECTOR_SIZE;
+    const int _N_TILES;
     int _TILE_SIZE;
     unsigned int _opcode_run;
     xrt::kernel _kernel;
@@ -59,7 +59,8 @@ public:
                                const char* path_insts_bin,
                                const char* kernel_name,
                                int VECTOR_SIZE,
-                               int num_slots);
+                               int num_slots,
+                               int N_TILES);
     ~mlir_aie_cpp_fft_test_impl();
 
     // Where all the action really happens

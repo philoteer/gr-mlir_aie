@@ -37,7 +37,8 @@ public:
                      const char* path_insts_bin,
                      const char* kernel_name,
                      int VECTOR_SIZE,
-                     int num_slots = 1);
+                     int num_slots = 1,
+                     int N_TILES = 4);
 };
 
 } // namespace mlir_aie

@@ -30,7 +30,6 @@ using equalizer_output_type = std::int8_t;
 class mlir_aie_cpp_equalizer_test_impl : public mlir_aie_cpp_equalizer_test
 {
 private:
-    static constexpr int _N_TILES = 4;
     static constexpr int _FFT_MAX_TAGS_PER_TILE = 31;
     static constexpr int _FFT_METADATA_WORDS_PER_TILE = 2 + 2 * _FFT_MAX_TAGS_PER_TILE;
     static constexpr int _MAX_OUTPUT_TAGS_PER_TILE = 16;
@@ -92,6 +91,7 @@ private:
     };
 
     int _VECTOR_SIZE;
+    const int _N_TILES;
     int _TILE_SIZE;
     std::atomic<double> _nominal_frequency;
     unsigned int _opcode_run;
@@ -109,7 +109,8 @@ public:
                                      const char* kernel_name,
                                      int VECTOR_SIZE,
                                      double nominal_frequency,
-                                     int num_slots);
+                                     int num_slots,
+                                     int N_TILES);
     ~mlir_aie_cpp_equalizer_test_impl();
 
     // Where all the action really happens

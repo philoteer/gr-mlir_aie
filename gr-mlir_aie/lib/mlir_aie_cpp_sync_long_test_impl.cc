@@ -21,12 +21,13 @@ namespace mlir_aie {
 mlir_aie_cpp_sync_long_test::sptr
 mlir_aie_cpp_sync_long_test::make(const char* path_xclbin,
                                   const char* path_insts_bin,
-                                  const char* kernel_name,
-                                  int VECTOR_SIZE,
-                                  int num_slots)
+                                   const char* kernel_name,
+                                   int VECTOR_SIZE,
+                                   int num_slots,
+                                   int N_TILES)
 {
     return gnuradio::make_block_sptr<mlir_aie_cpp_sync_long_test_impl>(
-        path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE, num_slots);
+        path_xclbin, path_insts_bin, kernel_name, VECTOR_SIZE, num_slots, N_TILES);
 }
 
 
@@ -38,24 +39,33 @@ mlir_aie_cpp_sync_long_test_impl::mlir_aie_cpp_sync_long_test_impl(
     const char* path_insts_bin,
     const char* kernel_name,
     int VECTOR_SIZE,
-    int num_slots)
+    int num_slots,
+    int N_TILES)
     : gr::block("mlir_aie_cpp_sync_long_test",
                 gr::io_signature::make(1, 1, sizeof(sync_long_input_type)),
                 gr::io_signature::make(1, 1, sizeof(sync_long_output_type))),
       _VECTOR_SIZE(VECTOR_SIZE),
-      _TILE_SIZE(VECTOR_SIZE / _N_TILES),
-      _IN_TILE_SIZE(_TILE_SIZE + _DELAY_SAMPLES),
-      _IN_VECTOR_SIZE(_IN_TILE_SIZE * _N_TILES),
+      _N_TILES(N_TILES),
+      _TILE_SIZE(0),
+      _IN_TILE_SIZE(0),
+      _IN_VECTOR_SIZE(0),
       _opcode_run(3),
       _delay_history(_DELAY_SAMPLES, 0)
 {
-    if (_VECTOR_SIZE <= 0 || _VECTOR_SIZE % _N_TILES != 0 ||
-        _TILE_SIZE < _DELAY_SAMPLES) {
-        throw std::invalid_argument("VECTOR_SIZE must be a positive multiple of 4 with "
-                                    "at least 320 samples per tile");
+    if (_N_TILES < 1) {
+        throw std::invalid_argument("N_TILES must be at least 1");
+    }
+    if (_VECTOR_SIZE <= 0 || _VECTOR_SIZE % _N_TILES != 0) {
+        throw std::invalid_argument("VECTOR_SIZE must be positive and divisible by N_TILES");
     }
     if (num_slots < 1) {
         throw std::invalid_argument("num_slots must be at least 1");
+    }
+    _TILE_SIZE = _VECTOR_SIZE / _N_TILES;
+    _IN_TILE_SIZE = _TILE_SIZE + _DELAY_SAMPLES;
+    _IN_VECTOR_SIZE = _IN_TILE_SIZE * _N_TILES;
+    if (_TILE_SIZE < _DELAY_SAMPLES) {
+        throw std::invalid_argument("VECTOR_SIZE must provide at least 320 samples per tile");
     }
 
     set_tag_propagation_policy(TPP_DONT);

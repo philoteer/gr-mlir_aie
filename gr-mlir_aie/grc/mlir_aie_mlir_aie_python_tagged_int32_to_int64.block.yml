@@ -4,7 +4,7 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_python_tagged_int32_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE})
+  make: mlir_aie.mlir_aie_python_tagged_int32_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${N_TILES})
 
 parameters:
 - id: path_xclbin
@@ -26,6 +26,11 @@ parameters:
   label: VECTOR_SIZE
   dtype: int
   default: 4096
+
+- id: N_TILES
+  label: Number of Tiles
+  dtype: int
+  default: 4
 
 inputs:
 - label: in
