@@ -58,6 +58,7 @@ private:
 
     struct io_slot {
         xrt::bo input_bo;
+        xrt::bo weights_bo;
         xrt::bo output_bo;
         xrt::bo metadata_bo;
         xrt::run run;
@@ -103,7 +104,8 @@ public:
                               int VECTOR_SIZE,
                               double nominal_frequency,
                               int num_slots,
-                              int N_TILES);
+                              int N_TILES,
+                              const char* weights_path);
     ~mlir_aie_80211_phy_impl();
 
     // Where all the action really happens

@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_80211_phy.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(71e4bb31ef212793afa316c2c9568fd9)                     */
+/* BINDTOOL_HEADER_FILE_HASH(1aec044ddabcabc675abeec125b9f7fd)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -44,7 +44,8 @@ void bind_mlir_aie_80211_phy(py::module& m)
            py::arg("VECTOR_SIZE"),
            py::arg("nominal_frequency") = 2.417e9,
            py::arg("num_slots") = 2,
-           py::arg("N_TILES") = 4
+           py::arg("N_TILES") = 4,
+           py::arg("weights_path") = ""
          )
 
         .def("set_nominal_frequency", &mlir_aie_80211_phy::set_nominal_frequency)
@@ -59,5 +60,4 @@ void bind_mlir_aie_80211_phy(py::module& m)
 
 
 }
-
 

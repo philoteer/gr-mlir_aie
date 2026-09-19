@@ -118,6 +118,23 @@ std::vector<uint32_t> test_utils::load_instr_binary(std::string instr_path) {
   return instr_v;
 }
 
+std::vector<uint8_t> test_utils::load_binary(std::string path) {
+  std::ifstream file(path, std::ios::binary);
+  if (!file.is_open())
+    throw std::runtime_error("Unable to open binary file: " + path);
+
+  file.seekg(0, std::ios::end);
+  const std::streamsize size = file.tellg();
+  file.seekg(0, std::ios::beg);
+  if (size < 0)
+    throw std::runtime_error("Unable to determine binary file size: " + path);
+
+  std::vector<uint8_t> data(static_cast<std::size_t>(size));
+  if (size != 0 && !file.read(reinterpret_cast<char *>(data.data()), size))
+    throw std::runtime_error("Failed to read binary file: " + path);
+  return data;
+}
+
 // --------------------------------------------------------------------------
 // XRT
 // --------------------------------------------------------------------------

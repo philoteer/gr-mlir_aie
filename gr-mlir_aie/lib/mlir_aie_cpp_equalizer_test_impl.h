@@ -81,6 +81,7 @@ private:
     struct io_slot {
         xrt::bo input_bo;
         xrt::bo input_meta_bo;
+        xrt::bo weights_bo;
         xrt::bo output_bo;
         xrt::bo output_meta_bo;
         xrt::run run;
@@ -110,7 +111,8 @@ public:
                                      int VECTOR_SIZE,
                                      double nominal_frequency,
                                      int num_slots,
-                                     int N_TILES);
+                                     int N_TILES,
+                                     const char* weights_path);
     ~mlir_aie_cpp_equalizer_test_impl();
 
     // Where all the action really happens

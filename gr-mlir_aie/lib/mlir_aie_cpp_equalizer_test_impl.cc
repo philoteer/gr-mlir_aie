@@ -26,7 +26,8 @@ mlir_aie_cpp_equalizer_test::make(const char* path_xclbin,
                                    int VECTOR_SIZE,
                                    double nominal_frequency,
                                    int num_slots,
-                                   int N_TILES)
+                                   int N_TILES,
+                                   const char* weights_path)
 {
     return gnuradio::make_block_sptr<mlir_aie_cpp_equalizer_test_impl>(path_xclbin,
                                                                        path_insts_bin,
@@ -34,7 +35,8 @@ mlir_aie_cpp_equalizer_test::make(const char* path_xclbin,
                                                                        VECTOR_SIZE,
                                                                        nominal_frequency,
                                                                        num_slots,
-                                                                       N_TILES);
+                                                                       N_TILES,
+                                                                       weights_path);
 }
 
 mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
@@ -44,7 +46,8 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     int VECTOR_SIZE,
     double nominal_frequency,
     int num_slots,
-    int N_TILES)
+    int N_TILES,
+    const char* weights_path)
     : gr::block("mlir_aie_cpp_equalizer_test",
                 gr::io_signature::make(1, 1, sizeof(equalizer_input_type)),
                 gr::io_signature::make(1, 1, sizeof(equalizer_output_type))),
@@ -63,7 +66,31 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     if (num_slots < 1) {
         throw std::invalid_argument("num_slots must be at least 1");
     }
+    const bool streamed_weights = weights_path != nullptr && weights_path[0] != '\0';
+    if (streamed_weights && _VECTOR_SIZE % 64 != 0) {
+        throw std::invalid_argument("VECTOR_SIZE must be divisible by 64 for streamed weights");
+    }
     _TILE_SIZE = _VECTOR_SIZE / _N_TILES;
+
+    std::vector<std::uint8_t> expanded_weights;
+    if (streamed_weights) {
+        const auto model_weights = test_utils::load_binary(weights_path);
+        if (model_weights.empty()) {
+            throw std::invalid_argument("weights file must not be empty");
+        }
+        const auto symbol_count = static_cast<std::size_t>(_VECTOR_SIZE / 64);
+        if (model_weights.size() >
+            std::numeric_limits<std::size_t>::max() / symbol_count) {
+            throw std::overflow_error("expanded weights size overflow");
+        }
+        expanded_weights.resize(model_weights.size() * symbol_count);
+        for (std::size_t offset = 0; offset < expanded_weights.size();
+             offset += model_weights.size()) {
+            std::memcpy(expanded_weights.data() + offset,
+                        model_weights.data(),
+                        model_weights.size());
+        }
+    }
 
     set_tag_propagation_policy(TPP_DONT);
     set_output_multiple(_VECTOR_SIZE);
@@ -107,18 +134,37 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
                                 XRT_BO_FLAGS_HOST_ONLY,
                                 _kernel.group_id(3));
         slot.input_meta_bo = xrt::bo(
-            _device, input_metadata_size, XRT_BO_FLAGS_HOST_ONLY, _kernel.group_id(3));
+            _device,
+            input_metadata_size,
+            XRT_BO_FLAGS_HOST_ONLY,
+            _kernel.group_id(streamed_weights ? 4 : 3));
+        if (streamed_weights) {
+            slot.weights_bo = xrt::bo(_device,
+                                      expanded_weights.size(),
+                                      XRT_BO_FLAGS_HOST_ONLY,
+                                      _kernel.group_id(5));
+        }
         slot.output_bo = xrt::bo(_device,
-                                 _VECTOR_SIZE * sizeof(equalizer_output_type),
-                                 XRT_BO_FLAGS_HOST_ONLY,
-                                 _kernel.group_id(3));
+                                  _VECTOR_SIZE * sizeof(equalizer_output_type),
+                                  XRT_BO_FLAGS_HOST_ONLY,
+                                  _kernel.group_id(streamed_weights ? 6 : 3));
         slot.output_meta_bo = xrt::bo(
-            _device, output_metadata_size, XRT_BO_FLAGS_HOST_ONLY, _kernel.group_id(3));
+            _device,
+            output_metadata_size,
+            XRT_BO_FLAGS_HOST_ONLY,
+            _kernel.group_id(streamed_weights ? 7 : 3));
 
         slot.input = slot.input_bo.map<kernel_input_type*>();
         slot.input_meta = slot.input_meta_bo.map<std::int32_t*>();
         slot.output = slot.output_bo.map<equalizer_output_type*>();
         slot.output_meta = slot.output_meta_bo.map<tile_metadata*>();
+
+        if (streamed_weights) {
+            std::memcpy(slot.weights_bo.map<void*>(),
+                        expanded_weights.data(),
+                        expanded_weights.size());
+            slot.weights_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        }
 
         std::memset(slot.output, 0, _VECTOR_SIZE * sizeof(equalizer_output_type));
         std::memset(slot.output_meta, 0, output_metadata_size);
@@ -131,8 +177,14 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
         slot.run.set_arg(2, _instr_v.size());
         slot.run.set_arg(3, slot.input_bo);
         slot.run.set_arg(4, slot.input_meta_bo);
-        slot.run.set_arg(5, slot.output_bo);
-        slot.run.set_arg(6, slot.output_meta_bo);
+        if (streamed_weights) {
+            slot.run.set_arg(5, slot.weights_bo);
+            slot.run.set_arg(6, slot.output_bo);
+            slot.run.set_arg(7, slot.output_meta_bo);
+        } else {
+            slot.run.set_arg(5, slot.output_bo);
+            slot.run.set_arg(6, slot.output_meta_bo);
+        }
     }
 }
 

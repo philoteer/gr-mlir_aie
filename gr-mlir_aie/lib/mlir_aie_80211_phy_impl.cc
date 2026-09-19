@@ -27,7 +27,8 @@ mlir_aie_80211_phy::sptr mlir_aie_80211_phy::make(const char* path_xclbin,
                                                     int VECTOR_SIZE,
                                                     double nominal_frequency,
                                                     int num_slots,
-                                                    int N_TILES)
+                                                    int N_TILES,
+                                                    const char* weights_path)
 {
     return gnuradio::make_block_sptr<mlir_aie_80211_phy_impl>(
         path_xclbin,
@@ -36,7 +37,8 @@ mlir_aie_80211_phy::sptr mlir_aie_80211_phy::make(const char* path_xclbin,
         VECTOR_SIZE,
         nominal_frequency,
         num_slots,
-        N_TILES);
+        N_TILES,
+        weights_path);
 }
 
 mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
@@ -45,7 +47,8 @@ mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
                                                   int VECTOR_SIZE,
                                                   double nominal_frequency,
                                                   int num_slots,
-                                                  int N_TILES)
+                                                  int N_TILES,
+                                                  const char* weights_path)
     : gr::block("mlir_aie_80211_phy",
                  gr::io_signature::make(1, 1, sizeof(phy_input_type)),
                  gr::io_signature::make(1, 1, sizeof(phy_output_type))),
@@ -61,6 +64,10 @@ mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
     if (VECTOR_SIZE <= 0 || VECTOR_SIZE % _N_TILES != 0) {
         throw std::invalid_argument("VECTOR_SIZE must be positive and divisible by N_TILES");
     }
+    const bool streamed_weights = weights_path != nullptr && weights_path[0] != '\0';
+    if (streamed_weights && VECTOR_SIZE % 64 != 0) {
+        throw std::invalid_argument("VECTOR_SIZE must be divisible by 64 for streamed weights");
+    }
     _path_xclbin = path_xclbin;
     _path_insts_bin = path_insts_bin;
     _VECTOR_SIZE = VECTOR_SIZE;
@@ -68,6 +75,26 @@ mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
     _kernel_name = kernel_name;
     _trace_size = 0;
     _opcode_run = 3;
+
+    std::vector<std::uint8_t> expanded_weights;
+    if (streamed_weights) {
+        const auto model_weights = test_utils::load_binary(weights_path);
+        if (model_weights.empty()) {
+            throw std::invalid_argument("weights file must not be empty");
+        }
+        const auto symbol_count = static_cast<std::size_t>(VECTOR_SIZE / 64);
+        if (model_weights.size() >
+            std::numeric_limits<std::size_t>::max() / symbol_count) {
+            throw std::overflow_error("expanded weights size overflow");
+        }
+        expanded_weights.resize(model_weights.size() * symbol_count);
+        for (std::size_t offset = 0; offset < expanded_weights.size();
+             offset += model_weights.size()) {
+            std::memcpy(expanded_weights.data() + offset,
+                        model_weights.data(),
+                        model_weights.size());
+        }
+    }
 
     set_tag_propagation_policy(TPP_DONT);
 
@@ -110,21 +137,33 @@ mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
     _slots.resize(num_slots);
     for (auto& slot : _slots) {
         slot.input_bo = xrt::bo(_device,
-                                _VECTOR_SIZE * sizeof(phy_input_type),
-                                XRT_BO_FLAGS_HOST_ONLY,
-                                _kernel.group_id(3));
-        slot.output_bo = xrt::bo(_device,
-                                 _VECTOR_SIZE * sizeof(phy_output_type) + _trace_size,
+                                 _VECTOR_SIZE * sizeof(phy_input_type),
                                  XRT_BO_FLAGS_HOST_ONLY,
                                  _kernel.group_id(3));
+        if (streamed_weights) {
+            slot.weights_bo = xrt::bo(_device,
+                                      expanded_weights.size(),
+                                      XRT_BO_FLAGS_HOST_ONLY,
+                                      _kernel.group_id(4));
+        }
+        slot.output_bo = xrt::bo(_device,
+                                  _VECTOR_SIZE * sizeof(phy_output_type) + _trace_size,
+                                  XRT_BO_FLAGS_HOST_ONLY,
+                                  _kernel.group_id(streamed_weights ? 5 : 3));
         slot.metadata_bo = xrt::bo(_device,
-                                   _N_TILES * sizeof(tile_metadata),
-                                   XRT_BO_FLAGS_HOST_ONLY,
-                                   _kernel.group_id(3));
+                                    _N_TILES * sizeof(tile_metadata),
+                                    XRT_BO_FLAGS_HOST_ONLY,
+                                    _kernel.group_id(streamed_weights ? 6 : 3));
 
         slot.input = slot.input_bo.map<phy_input_type*>();
         slot.output = slot.output_bo.map<phy_output_type*>();
         slot.metadata = slot.metadata_bo.map<tile_metadata*>();
+        if (streamed_weights) {
+            std::memcpy(slot.weights_bo.map<void*>(),
+                        expanded_weights.data(),
+                        expanded_weights.size());
+            slot.weights_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        }
         std::memset(slot.output,
                     42,
                     _VECTOR_SIZE * sizeof(phy_output_type) + _trace_size);
@@ -137,8 +176,14 @@ mlir_aie_80211_phy_impl::mlir_aie_80211_phy_impl(const char* path_xclbin,
         slot.run.set_arg(1, _bo_instr);
         slot.run.set_arg(2, _instr_v.size());
         slot.run.set_arg(3, slot.input_bo);
-        slot.run.set_arg(4, slot.output_bo);
-        slot.run.set_arg(5, slot.metadata_bo);
+        if (streamed_weights) {
+            slot.run.set_arg(4, slot.weights_bo);
+            slot.run.set_arg(5, slot.output_bo);
+            slot.run.set_arg(6, slot.metadata_bo);
+        } else {
+            slot.run.set_arg(4, slot.output_bo);
+            slot.run.set_arg(5, slot.metadata_bo);
+        }
     }
 
     set_output_multiple(_VECTOR_SIZE);

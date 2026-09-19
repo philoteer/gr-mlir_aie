@@ -4,7 +4,7 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_80211_phy(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency}, ${num_slots}, ${N_TILES})
+  make: mlir_aie.mlir_aie_80211_phy(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency}, ${num_slots}, ${N_TILES}, ${weights_path})
   callbacks:
   - set_nominal_frequency(${nominal_frequency})
 
@@ -43,6 +43,11 @@ parameters:
   label: Number of Tiles
   dtype: int
   default: 4
+
+- id: weights_path
+  label: Runtime weights
+  dtype: raw
+  default: "''"
 
 inputs:
 - label: in
