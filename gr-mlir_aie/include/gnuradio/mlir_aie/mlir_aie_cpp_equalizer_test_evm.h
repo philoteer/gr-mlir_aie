@@ -15,9 +15,12 @@ namespace gr {
 namespace mlir_aie {
 
 /*!
- * \brief <+description of block+>
+ * \brief Run the MLIR-AIE frame equalizer kernel.
  * \ingroup mlir_aie
  *
+ * Complex float input samples are converted to packed Q16.15 cint32 values for
+ * the kernel. Input wifi_start tags and output frame metadata are transferred
+ * through the kernel's per-tile metadata buffers.
  */
 class MLIR_AIE_API mlir_aie_cpp_equalizer_test_evm : virtual public gr::block
 {
@@ -28,12 +31,22 @@ public:
      * \brief Return a shared_ptr to a new instance of
      * mlir_aie::mlir_aie_cpp_equalizer_test_evm.
      *
-     * To avoid accidental use of raw pointers,
-     * mlir_aie::mlir_aie_cpp_equalizer_test_evm's constructor is in a private
-     * implementation class. mlir_aie::mlir_aie_cpp_equalizer_test_evm::make is the public
-     * interface for creating new instances.
+     * To avoid accidental use of raw pointers, mlir_aie::mlir_aie_cpp_equalizer_test_evm's
+     * constructor is in a private implementation
+     * class. mlir_aie::mlir_aie_cpp_equalizer_test_evm::make is the public interface for
+     * creating new instances.
      */
-    static sptr make();
+    static sptr make(const char* path_xclbin,
+                     const char* path_insts_bin,
+                     const char* kernel_name,
+                     int VECTOR_SIZE,
+                     double nominal_frequency,
+                     int num_slots = 1,
+                     int N_TILES = 4,
+                     const char* weights_path = "");
+
+    virtual void set_nominal_frequency(double nominal_frequency) = 0;
+    virtual double nominal_frequency() const = 0;
 };
 
 } // namespace mlir_aie

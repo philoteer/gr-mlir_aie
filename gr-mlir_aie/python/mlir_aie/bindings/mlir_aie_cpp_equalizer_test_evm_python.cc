@@ -13,8 +13,8 @@
 /* If manual edits are made, the following tags should be modified accordingly.    */
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
-/* BINDTOOL_HEADER_FILE(mlir_aie_cpp_equalizer_test_evm.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(5f774ce83e3096466875ff4ffc66756f)                     */
+/* BINDTOOL_HEADER_FILE(mlir_aie_cpp_equalizer_test_evm.h) */
+/* BINDTOOL_HEADER_FILE_HASH(a45d709aefc81156e72a27d4d591c2da)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -30,30 +30,30 @@ namespace py = pybind11;
 void bind_mlir_aie_cpp_equalizer_test_evm(py::module& m)
 {
 
-    using mlir_aie_cpp_equalizer_test_evm    = gr::mlir_aie::mlir_aie_cpp_equalizer_test_evm;
+    using mlir_aie_cpp_equalizer_test_evm = gr::mlir_aie::mlir_aie_cpp_equalizer_test_evm;
 
 
-    py::class_<mlir_aie_cpp_equalizer_test_evm, gr::block, gr::basic_block,
-        std::shared_ptr<mlir_aie_cpp_equalizer_test_evm>>(m, "mlir_aie_cpp_equalizer_test_evm", D(mlir_aie_cpp_equalizer_test_evm))
+    py::class_<mlir_aie_cpp_equalizer_test_evm,
+               gr::block,
+               gr::basic_block,
+               std::shared_ptr<mlir_aie_cpp_equalizer_test_evm>>(
+        m, "mlir_aie_cpp_equalizer_test_evm", D(mlir_aie_cpp_equalizer_test_evm))
 
         .def(py::init(&mlir_aie_cpp_equalizer_test_evm::make),
-           D(mlir_aie_cpp_equalizer_test_evm,make)
-        )
-        
+             D(mlir_aie_cpp_equalizer_test_evm, make),
+             py::arg("path_xclbin") = "build/final.xclbin",
+             py::arg("path_insts_bin") = "build/insts.bin",
+             py::arg("kernel_name") = "MLIR_AIE",
+             py::arg("VECTOR_SIZE") = 4096,
+             py::arg("nominal_frequency") = 2.417e9,
+             py::arg("num_slots") = 1,
+             py::arg("N_TILES") = 4,
+             py::arg("weights_path") = "")
 
+        .def("set_nominal_frequency",
+             &mlir_aie_cpp_equalizer_test_evm::set_nominal_frequency)
+        .def("nominal_frequency", &mlir_aie_cpp_equalizer_test_evm::nominal_frequency)
 
 
         ;
-
-
-
-
 }
-
-
-
-
-
-
-
-
