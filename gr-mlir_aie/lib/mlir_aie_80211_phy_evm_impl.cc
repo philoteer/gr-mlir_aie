@@ -227,6 +227,8 @@ int mlir_aie_80211_phy_evm_impl::general_work(int noutput_items,
     const auto frequency_offset_key = pmt::intern("frequency offset");
     const auto beta_key = pmt::intern("beta");
     const auto csi_key = pmt::intern("csi");
+    const auto iqdata_key = pmt::intern("iqdata");
+    const auto equalized_iq_key = pmt::intern("equalized_iq");
     const auto tag_srcid = pmt::intern("frame_equalizer");
     constexpr double q16_15_scale = 1.0 / (std::int64_t{ 1 } << 15);
     constexpr double q29_scale = 1.0 / (std::int64_t{ 1 } << 29);
@@ -292,6 +294,10 @@ int mlir_aie_80211_phy_evm_impl::general_work(int noutput_items,
                             static_cast<float>(tag.csi[csi_idx].imag * q16_15_scale)
                         };
                     }
+                    // The per-symbol kernel profile stores 48 Q16.15 data tones
+                    // in csi[0..47]; match frame_equalizer_debug's iqdata shape.
+                    const std::vector<std::complex<float>> equalized_iq(
+                        csi.begin(), csi.begin() + _EQUALIZED_IQ_SIZE);
 
                     const double snr = 10.0 * std::log10(
                         static_cast<double>(tag.snr_linear) / (2.0 * snr_q4_scale));
@@ -333,6 +339,12 @@ int mlir_aie_80211_phy_evm_impl::general_work(int noutput_items,
                                  csi_key,
                                  pmt::init_c32vector(csi.size(), csi),
                                  tag_srcid);
+                    pmt::pmt_t iqdata = pmt::make_dict();
+                    iqdata = pmt::dict_add(
+                        iqdata,
+                        equalized_iq_key,
+                        pmt::init_c32vector(equalized_iq.size(), equalized_iq));
+                    add_item_tag(0, tag_offset, iqdata_key, iqdata, tag_srcid);
                 }
             }
 

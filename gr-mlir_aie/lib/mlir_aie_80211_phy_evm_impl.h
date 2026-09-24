@@ -32,6 +32,7 @@ private:
     static constexpr int _MAX_TAGS_PER_TILE = 16;
     static constexpr int _CSI_SIZE = 64;
     static constexpr int _CSI_TAG_SIZE = 52;
+    static constexpr int _EQUALIZED_IQ_SIZE = 48;
 
     struct csi_value {
         std::int32_t real;
