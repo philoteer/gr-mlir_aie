@@ -41,7 +41,7 @@ private:
 
     struct tag_metadata {
         std::int32_t offset;
-        std::uint32_t reserved;
+        std::uint32_t frame_start;
         std::uint64_t frame_bytes;
         std::uint64_t encoding;
         std::uint64_t snr_linear;

@@ -301,16 +301,18 @@ int mlir_aie_80211_phy_evm_impl::general_work(int noutput_items,
 
                     const double snr = 10.0 * std::log10(
                         static_cast<double>(tag.snr_linear) / (2.0 * snr_q4_scale));
-                    add_item_tag(0,
-                                 tag_offset,
-                                 frame_bytes_key,
-                                 pmt::from_uint64(tag.frame_bytes),
-                                 tag_srcid);
-                    add_item_tag(0,
-                                 tag_offset,
-                                 encoding_key,
-                                 pmt::from_uint64(tag.encoding),
-                                 tag_srcid);
+                    if (tag.frame_start & 1u) {
+                        add_item_tag(0,
+                                     tag_offset,
+                                     frame_bytes_key,
+                                     pmt::from_uint64(tag.frame_bytes),
+                                     tag_srcid);
+                        add_item_tag(0,
+                                     tag_offset,
+                                     encoding_key,
+                                     pmt::from_uint64(tag.encoding),
+                                     tag_srcid);
+                    }
                     add_item_tag(
                         0,
                         tag_offset,
