@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_80211_phy_evm.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(e084fa0ac7d9b01de38cec3fbd131743)                     */
+/* BINDTOOL_HEADER_FILE_HASH(d3a5d673edaf750cda8d81f0a13c2b26)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,8 +37,19 @@ void bind_mlir_aie_80211_phy_evm(py::module& m)
         std::shared_ptr<mlir_aie_80211_phy_evm>>(m, "mlir_aie_80211_phy_evm", D(mlir_aie_80211_phy_evm))
 
         .def(py::init(&mlir_aie_80211_phy_evm::make),
-           D(mlir_aie_80211_phy_evm,make)
-        )
+           D(mlir_aie_80211_phy_evm,make),
+           py::arg("path_xclbin"),
+           py::arg("path_insts_bin"),
+           py::arg("kernel_name"),
+           py::arg("VECTOR_SIZE"),
+           py::arg("nominal_frequency") = 2.417e9,
+           py::arg("num_slots") = 2,
+           py::arg("N_TILES") = 4,
+           py::arg("weights_path") = ""
+         )
+
+        .def("set_nominal_frequency", &mlir_aie_80211_phy_evm::set_nominal_frequency)
+        .def("nominal_frequency", &mlir_aie_80211_phy_evm::nominal_frequency)
         
 
 
@@ -49,11 +60,3 @@ void bind_mlir_aie_80211_phy_evm(py::module& m)
 
 
 }
-
-
-
-
-
-
-
-
