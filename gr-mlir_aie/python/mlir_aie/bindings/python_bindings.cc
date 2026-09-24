@@ -47,6 +47,7 @@ namespace py = pybind11;
     void bind_mlir_aie_cpp_fft_test(py::module& m);
     void bind_mlir_aie_80211_phy(py::module& m);
     void bind_mlir_aie_cpp_equalizer_test(py::module& m);
+    void bind_mlir_aie_80211_phy_evm(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -101,5 +102,6 @@ PYBIND11_MODULE(mlir_aie_python, m)
     bind_mlir_aie_cpp_fft_test(m);
     bind_mlir_aie_80211_phy(m);
     bind_mlir_aie_cpp_equalizer_test(m);
+    bind_mlir_aie_80211_phy_evm(m);
     // ) END BINDING_FUNCTION_CALLS
 }

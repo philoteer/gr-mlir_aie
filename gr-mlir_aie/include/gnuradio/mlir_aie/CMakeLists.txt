@@ -35,4 +35,5 @@ install(FILES api.h
     mlir_aie_cpp_tagged_int32_to_int64.h
     mlir_aie_cpp_fft_test.h
     mlir_aie_80211_phy.h
-    mlir_aie_cpp_equalizer_test.h DESTINATION include/gnuradio/mlir_aie)
+    mlir_aie_cpp_equalizer_test.h
+    mlir_aie_80211_phy_evm.h DESTINATION include/gnuradio/mlir_aie)
