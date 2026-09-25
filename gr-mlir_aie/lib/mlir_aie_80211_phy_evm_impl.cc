@@ -312,35 +312,35 @@ int mlir_aie_80211_phy_evm_impl::general_work(int noutput_items,
                                      encoding_key,
                                      pmt::from_uint64(tag.encoding),
                                      tag_srcid);
+                        add_item_tag(
+                            0,
+                            tag_offset,
+                            snr_key,
+                            pmt::from_double(snr),
+                            tag_srcid);
+                        add_item_tag(0,
+                                      tag_offset,
+                                      nominal_frequency_key,
+                                      pmt::from_double(tag.center_frequency_mhz * 1e6),
+                                      tag_srcid);
+                        add_item_tag(0,
+                                      tag_offset,
+                                      frequency_offset_key,
+                                      pmt::from_double(tag.frequency_offset * q29_scale *
+                                                       sample_rate / (2.0 * pi)),
+                                      tag_srcid);
+                        add_item_tag(
+                            0,
+                            tag_offset,
+                            beta_key,
+                            pmt::from_double(tag.beta * q29_scale),
+                            tag_srcid);
+                        add_item_tag(0,
+                                     tag_offset,
+                                     csi_key,
+                                     pmt::init_c32vector(csi.size(), csi),
+                                     tag_srcid);
                     }
-                    add_item_tag(
-                        0,
-                        tag_offset,
-                        snr_key,
-                        pmt::from_double(snr),
-                        tag_srcid);
-                    add_item_tag(0,
-                                  tag_offset,
-                                  nominal_frequency_key,
-                                  pmt::from_double(tag.center_frequency_mhz * 1e6),
-                                  tag_srcid);
-                    add_item_tag(0,
-                                  tag_offset,
-                                  frequency_offset_key,
-                                  pmt::from_double(tag.frequency_offset * q29_scale *
-                                                   sample_rate / (2.0 * pi)),
-                                  tag_srcid);
-                    add_item_tag(
-                        0,
-                        tag_offset,
-                        beta_key,
-                        pmt::from_double(tag.beta * q29_scale),
-                        tag_srcid);
-                    add_item_tag(0,
-                                 tag_offset,
-                                 csi_key,
-                                 pmt::init_c32vector(csi.size(), csi),
-                                 tag_srcid);
                     pmt::pmt_t iqdata = pmt::make_dict();
                     iqdata = pmt::dict_add(
                         iqdata,
