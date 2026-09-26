@@ -93,6 +93,8 @@ private:
     xrt::kernel _kernel;
     xrt::bo _bo_instr;
     std::vector<uint32_t> _instr_v;
+    std::size_t _center_mhz_index;
+    std::size_t _reciprocal_q30_index;
     xrt::device _device;
     std::vector<io_slot> _slots;
 
