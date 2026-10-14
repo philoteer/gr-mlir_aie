@@ -10,14 +10,21 @@
 
 #include <gnuradio/mlir_aie/api.h>
 #include <gnuradio/sync_block.h>
+#include <cstddef>
+#include <cstdint>
+#include <string>
 
 namespace gr {
 namespace mlir_aie {
 
 /*!
- * \brief <+description of block+>
+ * \brief Pass samples through and inject SigMF capture frequency tags.
  * \ingroup mlir_aie
- *
+ * One stream item must represent one SigMF sample (both I and Q for complex
+ * data). Existing tags and sample bytes are preserved. The first known
+ * frequency and each subsequent change produce a PMT double tag in Hz.
+ * Metadata is read once at construction. Playback must not repeat or seek
+ * after construction; start_sample supports an initial File Source offset.
  */
 class MLIR_AIE_API sigmf_tag_injector : virtual public gr::sync_block
 {
@@ -32,7 +39,10 @@ public:
      * class. mlir_aie::sigmf_tag_injector::make is the public interface for
      * creating new instances.
      */
-    static sptr make();
+    static sptr make(const std::string& metadata_file,
+                     size_t itemsize = 8,
+                     const std::string& tag_key = "rx_freq",
+                     uint64_t start_sample = 0);
 };
 
 } // namespace mlir_aie

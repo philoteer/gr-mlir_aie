@@ -52,9 +52,11 @@ if(NOT mlir_aie_sources)
 endif(NOT mlir_aie_sources)
 
 find_library(XRT_LIB NAMES xrt_coreutil HINTS /opt/xilinx/xrt/lib)
+find_package(Boost 1.75 REQUIRED)
 
 add_library(gnuradio-mlir_aie SHARED ${mlir_aie_sources})
-target_link_libraries(gnuradio-mlir_aie gnuradio::gnuradio-runtime     ${XRT_LIB})
+target_link_libraries(gnuradio-mlir_aie PUBLIC gnuradio::gnuradio-runtime ${XRT_LIB}
+                      PRIVATE Boost::headers)
 target_include_directories(
     gnuradio-mlir_aie
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>

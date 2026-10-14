@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(sigmf_tag_injector.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(1ff6018b2c54df0a54555c9d485c5418)                     */
+/* BINDTOOL_HEADER_FILE_HASH(d14e76bbf9c4f8a878b3d36a0780c721)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,6 +37,10 @@ void bind_sigmf_tag_injector(py::module& m)
         std::shared_ptr<sigmf_tag_injector>>(m, "sigmf_tag_injector", D(sigmf_tag_injector))
 
         .def(py::init(&sigmf_tag_injector::make),
+           py::arg("metadata_file"),
+           py::arg("itemsize") = 8,
+           py::arg("tag_key") = "rx_freq",
+           py::arg("start_sample") = 0,
            D(sigmf_tag_injector,make)
         )
         
@@ -49,8 +53,6 @@ void bind_sigmf_tag_injector(py::module& m)
 
 
 }
-
-
 
 
 
