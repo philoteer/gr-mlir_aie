@@ -227,6 +227,9 @@ int mlir_aie_80211_phy_evm_impl::general_work(int noutput_items,
         instr[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
         instr[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
         _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        std::cout << "mlir_aie_80211_phy_evm: nominal frequency changed from "
+                  << _instr_v[_center_mhz_index] << " MHz to " << center_mhz
+                  << " MHz" << std::endl;
         _instr_v[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
         _instr_v[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
     }

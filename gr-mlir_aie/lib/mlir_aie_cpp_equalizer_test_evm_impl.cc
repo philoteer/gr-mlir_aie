@@ -6,12 +6,14 @@
  */
 
 #include "mlir_aie_cpp_equalizer_test_evm_impl.h"
+#include "phy_frequency_rtp.h"
 #include <gnuradio/io_signature.h>
 #include <pmt/pmt.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <iostream>
 #include <iterator>
 #include <limits>
 #include <stdexcept>
@@ -96,24 +98,19 @@ mlir_aie_cpp_equalizer_test_evm_impl::mlir_aie_cpp_equalizer_test_evm_impl(
     set_output_multiple(_VECTOR_SIZE);
 
     _instr_v = test_utils::load_instr_binary(path_insts_bin);
-    const double center_frequency_mhz = nominal_frequency / 1e6;
-    if (!std::isfinite(center_frequency_mhz) || center_frequency_mhz <= 0.0 ||
-        center_frequency_mhz > std::numeric_limits<std::int32_t>::max()) {
-        throw std::invalid_argument("nominal_frequency must be a positive frequency in Hz");
-    }
-    const auto center_mhz = static_cast<std::int32_t>(std::llround(center_frequency_mhz));
-    const auto reciprocal_q30 = static_cast<std::int32_t>(
-        std::llround(20.0 / center_mhz * (std::int64_t{ 1 } << 30)));
-    const auto patch_rtp = [this](std::uint32_t marker, std::int32_t value) {
+    const auto [center_mhz, reciprocal_q30] = phy_frequency_rtp(nominal_frequency);
+    const auto locate_rtp = [this](std::uint32_t marker) {
         const auto it = std::find(_instr_v.begin(), _instr_v.end(), marker);
         if (it == _instr_v.end() ||
             std::find(std::next(it), _instr_v.end(), marker) != _instr_v.end()) {
             throw std::runtime_error("center-frequency RTP marker is missing or ambiguous");
         }
-        *it = static_cast<std::uint32_t>(value);
+        return static_cast<std::size_t>(std::distance(_instr_v.begin(), it));
     };
-    patch_rtp(0x13579BDFu, center_mhz);
-    patch_rtp(0x2468ACE0u, reciprocal_q30);
+    _center_mhz_index = locate_rtp(0x13579BDFu);
+    _reciprocal_q30_index = locate_rtp(0x2468ACE0u);
+    _instr_v[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
+    _instr_v[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
     test_utils::init_xrt_load_kernel(_device, _kernel, 1, path_xclbin, kernel_name);
 
     _bo_instr = xrt::bo(_device,
@@ -192,6 +189,7 @@ mlir_aie_cpp_equalizer_test_evm_impl::~mlir_aie_cpp_equalizer_test_evm_impl() {}
 
 void mlir_aie_cpp_equalizer_test_evm_impl::set_nominal_frequency(double nominal_frequency)
 {
+    phy_frequency_rtp(nominal_frequency);
     _nominal_frequency.store(nominal_frequency);
 }
 
@@ -217,6 +215,23 @@ int mlir_aie_cpp_equalizer_test_evm_impl::general_work(int noutput_items,
     const int n_chunks = std::min(ninput_items[0], noutput_items) / _VECTOR_SIZE;
     if (n_chunks == 0) {
         return 0;
+    }
+
+    // The previous general_work call waited for every run. Update the shared
+    // instruction BO only here, before starting any run in this batch.
+    const auto [center_mhz, reciprocal_q30] =
+        phy_frequency_rtp(_nominal_frequency.load());
+    if (_instr_v[_center_mhz_index] != static_cast<std::uint32_t>(center_mhz) ||
+        _instr_v[_reciprocal_q30_index] != static_cast<std::uint32_t>(reciprocal_q30)) {
+        auto* instr = static_cast<std::uint32_t*>(bufInstr);
+        instr[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
+        instr[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
+        _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        std::cout << "mlir_aie_cpp_equalizer_test_evm: nominal frequency changed from "
+                  << _instr_v[_center_mhz_index] << " MHz to " << center_mhz
+                  << " MHz" << std::endl;
+        _instr_v[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
+        _instr_v[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
     }
 
     const auto wifi_start_key = pmt::intern("wifi_start");
