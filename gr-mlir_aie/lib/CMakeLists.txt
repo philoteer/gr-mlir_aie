@@ -91,6 +91,11 @@ message(STATUS "Building for version: ${VERSION} / ${LIBVER}")
 ########################################################################
 include(GrTest)
 
+# Frequency scheduling can be checked without an XRT device or kernel binary.
+add_executable(qa_phy_frequency_tags qa_phy_frequency_tags.cc)
+target_link_libraries(qa_phy_frequency_tags PRIVATE gnuradio::gnuradio-runtime)
+add_test(NAME qa_phy_frequency_tags COMMAND qa_phy_frequency_tags)
+
 # If your unit tests require special include paths, add them here
 #include_directories()
 # List all files that contain Boost.UTF unit tests here

@@ -7,6 +7,7 @@
 
 #include "mlir_aie_80211_phy_impl.h"
 #include "phy_frequency_rtp.h"
+#include "phy_frequency_tags.h"
 #include <gnuradio/io_signature.h>
 #include <pmt/pmt.h>
 
@@ -212,10 +213,23 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
     auto in = static_cast<const phy_input_type*>(input_items[0]);
     auto out = static_cast<phy_output_type*>(output_items[0]);
 
-    const int n_chunks = std::min(ninput_items[0], noutput_items) / _VECTOR_SIZE;
+    int n_chunks = std::min(ninput_items[0], noutput_items) / _VECTOR_SIZE;
     if (n_chunks == 0) {
         return 0;
     }
+
+    const std::uint64_t input_abs_start = nitems_read(0);
+    std::vector<tag_t> frequency_tags;
+    get_tags_in_range(frequency_tags,
+                      0,
+                      input_abs_start,
+                      input_abs_start + static_cast<std::uint64_t>(n_chunks) * _VECTOR_SIZE,
+                      pmt::intern("rx_freq"));
+    const auto frequency_batch =
+        plan_phy_frequency_batch(frequency_tags, input_abs_start, _VECTOR_SIZE, n_chunks);
+    n_chunks = frequency_batch.n_chunks;
+    if (frequency_batch.frequency)
+        set_nominal_frequency(*frequency_batch.frequency);
 
     // The previous general_work call waited for every run. Update the shared
     // instruction BO only here, before starting any run in this batch.
@@ -357,6 +371,10 @@ int mlir_aie_80211_phy_impl::general_work(int noutput_items,
     }
 
     const int processed_items = n_chunks * _VECTOR_SIZE;
+    // All runs are finished. Preserve any tag consumed inside the last vector
+    // so the next general_work call applies it before launching more samples.
+    if (frequency_batch.next_frequency)
+        set_nominal_frequency(*frequency_batch.next_frequency);
     consume_each(processed_items);
 
     return total_produced;

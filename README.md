@@ -44,3 +44,11 @@ tagged at output offset zero, and later changes are shifted accordingly.
 Repeating playback and seeking during playback are not supported. This block
 currently handles only capture center frequencies, not timestamps, sample rate
 or annotations. Building it requires Boost.JSON (Boost 1.75 or newer).
+
+`mlir_aie_80211_phy` and `mlir_aie_80211_phy_evm` automatically use input
+`rx_freq` tags (the injector's default key) to update their nominal frequency.
+Tag values are PMT doubles in Hz; the kernel frequency is rounded to integer
+MHz. A tag at a `VECTOR_SIZE` boundary applies before that vector runs. A tag
+inside a vector applies at the next vector boundary, after all outstanding
+runs finish. If several changes occur inside one vector, the last value wins.
+Each applied integer-MHz change prints the block name and old/new frequencies.
