@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(latency_tag_updater.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(28ff94cef605e265fb57d9062c3d3668)                     */
+/* BINDTOOL_HEADER_FILE_HASH(27f99547b07726313169175d06971c23)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,6 +37,8 @@ void bind_latency_tag_updater(py::module& m)
         std::shared_ptr<latency_tag_updater>>(m, "latency_tag_updater", D(latency_tag_updater))
 
         .def(py::init(&latency_tag_updater::make),
+           py::arg("name"),
+           py::arg("itemsize") = 8,
            D(latency_tag_updater,make)
         )
         
@@ -49,8 +51,6 @@ void bind_latency_tag_updater(py::module& m)
 
 
 }
-
-
 
 
 

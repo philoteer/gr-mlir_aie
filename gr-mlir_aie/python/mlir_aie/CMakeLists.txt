@@ -52,3 +52,4 @@ GR_ADD_TEST(qa_int32_Q_to_float32 ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DI
 GR_ADD_TEST(qa_float32_to_int32_Q ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_float32_to_int32_Q.py)
 GR_ADD_TEST(qa_complex64_to_cint32 ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_complex64_to_cint32.py)
 GR_ADD_TEST(qa_sigmf_tag_injector ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_sigmf_tag_injector.py)
+GR_ADD_TEST(qa_latency_tag_updater ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_latency_tag_updater.py)
