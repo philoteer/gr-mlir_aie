@@ -53,7 +53,8 @@ list(APPEND mlir_aie_python_files
     mlir_aie_cpp_equalizer_test_python.cc
     mlir_aie_80211_phy_evm_python.cc
     mlir_aie_cpp_equalizer_test_evm_python.cc
-    sigmf_tag_injector_python.cc python_bindings.cc)
+    sigmf_tag_injector_python.cc
+    latency_tag_updater_python.cc python_bindings.cc)
 
 gr_pybind_make_oot(mlir_aie ../../.. gr::mlir_aie "${mlir_aie_python_files}")
 

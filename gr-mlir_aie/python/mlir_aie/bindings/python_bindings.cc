@@ -50,6 +50,7 @@ namespace py = pybind11;
     void bind_mlir_aie_80211_phy_evm(py::module& m);
     void bind_mlir_aie_cpp_equalizer_test_evm(py::module& m);
     void bind_sigmf_tag_injector(py::module& m);
+    void bind_latency_tag_updater(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -107,5 +108,6 @@ PYBIND11_MODULE(mlir_aie_python, m)
     bind_mlir_aie_80211_phy_evm(m);
     bind_mlir_aie_cpp_equalizer_test_evm(m);
     bind_sigmf_tag_injector(m);
+    bind_latency_tag_updater(m);
     // ) END BINDING_FUNCTION_CALLS
 }

@@ -38,4 +38,5 @@ install(FILES api.h
     mlir_aie_cpp_equalizer_test.h
     mlir_aie_80211_phy_evm.h
     mlir_aie_cpp_equalizer_test_evm.h
-    sigmf_tag_injector.h DESTINATION include/gnuradio/mlir_aie)
+    sigmf_tag_injector.h
+    latency_tag_updater.h DESTINATION include/gnuradio/mlir_aie)
