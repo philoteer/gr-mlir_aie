@@ -18,11 +18,19 @@ namespace gr {
 namespace mlir_aie {
 
 /*!
- * \brief Pass samples through and inject SigMF capture frequency tags.
+ * \brief Pass samples through and inject SigMF frequency and frame-start tags.
  * \ingroup mlir_aie
  * One stream item must represent one SigMF sample (both I and Q for complex
  * data). Existing tags and sample bytes are preserved. The first known
  * frequency and each subsequent change produce a PMT double tag in Hz.
+ * Annotations with core:label beginning "wifi-frame-" produce a "frame_start"
+ * PMT dictionary at core:sample_start. Fields are frame_id (the unique label,
+ * PMT symbol), sample_start (original SigMF offset, uint64), and timestamp_ns
+ * (CLOCK_MONOTONIC nanoseconds at tag emission, uint64). Labels must be unique
+ * within the metadata. Unrelated annotations are ignored. Frame starts before
+ * start_sample are skipped; annotation order need not be sorted.
+ * Timestamps measure software passage through this block, including scheduler
+ * batching effects, and are directly comparable to Python time.monotonic_ns().
  * Metadata is read once at construction. Playback must not repeat or seek
  * after construction; start_sample supports an initial File Source offset.
  */

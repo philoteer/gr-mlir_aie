@@ -4,6 +4,8 @@
 import json
 import os
 import tempfile
+import time
+import hashlib
 
 import pmt
 from gnuradio import blocks, gr, gr_unittest, mlir_aie
@@ -17,10 +19,10 @@ class qa_sigmf_tag_injector(gr_unittest.TestCase):
     def tearDown(self):
         self.directory.cleanup()
 
-    def metadata(self, captures):
+    def metadata(self, captures, annotations=None):
         with open(self.path, "w") as file:
             json.dump({"global": {"core:datatype": "ci16_le"},
-                       "captures": captures, "annotations": []}, file)
+                       "captures": captures, "annotations": annotations or []}, file)
 
     def run_stream(self, start_sample=0, tag_key="rx_freq"):
         samples = tuple(range(24))
@@ -35,12 +37,109 @@ class qa_sigmf_tag_injector(gr_unittest.TestCase):
         sink = blocks.vector_sink_i()
         tb = gr.top_block()
         tb.connect(source, injector, sink)
+        before = time.monotonic_ns()
         tb.run()
+        after = time.monotonic_ns()
+        self.frame_tags = [t for t in sink.tags()
+                           if pmt.symbol_to_string(t.key) == "frame_start"]
+        self.check_frame_timestamps(self.frame_tags, before, after)
         self.assertEqual(samples, tuple(sink.data()))
         existing = [t for t in sink.tags() if pmt.symbol_to_string(t.key) == "existing"]
         self.assertEqual([(7, 42)], [(t.offset, pmt.to_long(t.value)) for t in existing])
         return [(t.offset, pmt.to_double(t.value)) for t in sink.tags()
                 if pmt.symbol_to_string(t.key) == tag_key]
+
+    def check_frame_timestamps(self, tags, before, after):
+        previous = before
+        ids = []
+        for tag in tags:
+            self.assertTrue(pmt.is_dict(tag.value))
+            timestamp = pmt.dict_ref(tag.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL)
+            self.assertTrue(pmt.is_uint64(timestamp))
+            timestamp = pmt.to_uint64(timestamp)
+            self.assertGreaterEqual(timestamp, previous)
+            self.assertLessEqual(timestamp, after)
+            previous = timestamp
+            ids.append(pmt.symbol_to_string(pmt.dict_ref(
+                tag.value, pmt.intern("frame_id"), pmt.PMT_NIL)))
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_frames_and_frequencies(self):
+        # Deliberately unsorted, with unrelated annotations and an EOF frame.
+        offsets = [23, 0, 4, 3, 8, 24]
+        self.metadata([{"core:sample_start": 0, "core:frequency": 2.412e9},
+                       {"core:sample_start": 4, "core:frequency": 2.417e9}],
+                      [{"core:sample_start": n, "core:label": "wifi-frame-%08d" % n}
+                       for n in offsets] + [{"core:label": "noise"}, {}])
+        self.assertEqual([(0, 2.412e9), (4, 2.417e9)], self.run_stream())
+        self.assertEqual([0, 3, 4, 8, 23], [t.offset for t in self.frame_tags])
+        for tag in self.frame_tags:
+            self.assertEqual("wifi-frame-%08d" % tag.offset,
+                             pmt.symbol_to_string(pmt.dict_ref(
+                                 tag.value, pmt.intern("frame_id"), pmt.PMT_NIL)))
+            self.assertEqual(tag.offset, pmt.to_uint64(pmt.dict_ref(
+                tag.value, pmt.intern("sample_start"), pmt.PMT_NIL)))
+
+    def test_frame_seek_and_large_offsets(self):
+        base = 2**33
+        self.metadata([], [{"core:sample_start": base + n,
+                            "core:sample_count": 8,
+                            "core:label": "wifi-frame-%08d" % i}
+                           for i, n in enumerate([-1, 0, 4, 23, 24])])
+        self.assertEqual([], self.run_stream(base))
+        self.assertEqual([0, 4, 23], [t.offset for t in self.frame_tags])
+        self.assertEqual([base, base + 4, base + 23], [pmt.to_uint64(pmt.dict_ref(
+            t.value, pmt.intern("sample_start"), pmt.PMT_NIL)) for t in self.frame_tags])
+
+    def test_invalid_frame_annotations(self):
+        for annotations in (
+            [{"core:label": "wifi-frame-0"}],
+            [{"core:label": "wifi-frame-0", "core:sample_start": -1}],
+            [{"core:label": "wifi-frame-0", "core:sample_start": 1.5}],
+            [{"core:label": "wifi-frame-0", "core:sample_start": n} for n in (0, 4)],
+        ):
+            self.metadata([], annotations)
+            with self.assertRaises(RuntimeError):
+                mlir_aie.sigmf_tag_injector(self.path)
+
+    def test_synthetic_latency_recording(self):
+        metadata_path = os.environ.get("SIGMF_LATENCY_METADATA")
+        if not metadata_path:
+            self.skipTest("set SIGMF_LATENCY_METADATA to test the generated I/Q recording")
+        with open(metadata_path) as file:
+            metadata = json.load(file)
+        data_path = os.path.splitext(metadata_path)[0] + ".sigmf-data"
+        output_path = os.path.join(self.directory.name, "output.cf32")
+        self.assertEqual("cf32_le", metadata["global"]["core:datatype"])
+        source = blocks.file_source(gr.sizeof_gr_complex, data_path, False)
+        injector = mlir_aie.sigmf_tag_injector(metadata_path)
+        injector.set_max_noutput_items(4096)
+        samples = blocks.file_sink(gr.sizeof_gr_complex, output_path, False)
+        tags = blocks.tag_debug(gr.sizeof_gr_complex, "latency QA", "")
+        tags.set_display(False)
+        tags.set_save_all(True)
+        tb = gr.top_block()
+        tb.connect(source, injector, samples)
+        tb.connect(injector, tags)
+        before = time.monotonic_ns()
+        tb.run()
+        after = time.monotonic_ns()
+        samples.close()
+        with open(data_path, "rb") as original, open(output_path, "rb") as output:
+            self.assertEqual(hashlib.sha256(original.read()).digest(),
+                             hashlib.sha256(output.read()).digest())
+        frames = [t for t in tags.current_tags()
+                  if pmt.symbol_to_string(t.key) == "frame_start"]
+        expected = sorted((a["core:sample_start"], a["core:label"])
+                          for a in metadata["annotations"]
+                          if a.get("core:label", "").startswith("wifi-frame-"))
+        self.assertTrue(expected)
+        self.assertEqual(expected, [(t.offset, pmt.symbol_to_string(pmt.dict_ref(
+            t.value, pmt.intern("frame_id"), pmt.PMT_NIL))) for t in frames])
+        self.check_frame_timestamps(frames, before, after)
+        frequencies = [(t.offset, pmt.to_double(t.value)) for t in tags.current_tags()
+                       if pmt.symbol_to_string(t.key) == "rx_freq"]
+        self.assertEqual([(0, metadata["captures"][0]["core:frequency"])], frequencies)
 
     def test_exact_offsets_and_frequency_changes(self):
         self.metadata([

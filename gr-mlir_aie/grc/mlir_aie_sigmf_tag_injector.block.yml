@@ -48,6 +48,15 @@ documentation: |-
   Set Starting Sample Offset to the File Source's initial offset (in samples).
   The active frequency at that offset is tagged at output sample zero.
   Metadata is loaded at construction; disable File Source repeat and do not
-  seek during playback. Sample rate, timestamps and annotations are ignored.
+  seek during playback.
+
+  Annotations whose core:label starts with "wifi-frame-" also emit a frame_start
+  tag at core:sample_start. Its PMT dictionary contains frame_id (the label as a
+  symbol), sample_start (original metadata offset, uint64), and timestamp_ns
+  (CLOCK_MONOTONIC nanoseconds, uint64). Frame labels must be unique in the file.
+  Frame starts before Starting Sample Offset are skipped. Other annotations are
+  ignored. Timestamping happens at tag emission, not metadata loading; compare
+  with time.monotonic_ns() downstream. Scheduler batching affects the measured
+  latency. SigMF recording timestamps are not used.
 
 file_format: 1

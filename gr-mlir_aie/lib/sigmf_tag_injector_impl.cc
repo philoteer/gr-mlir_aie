@@ -9,12 +9,17 @@
 #include <boost/json.hpp>
 // Compile Boost.JSON here so no separate libboost_json is required.
 #include <boost/json/src.hpp>
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <fstream>
 #include <iterator>
 #include <limits>
 #include <stdexcept>
+#include <system_error>
+#include <time.h>
+#include <unordered_set>
+#include <cerrno>
 
 namespace gr {
 namespace mlir_aie {
@@ -97,6 +102,41 @@ sigmf_tag_injector_impl::sigmf_tag_injector_impl(const std::string& metadata_fil
         }
         if (have_initial)
             d_changes.insert(d_changes.begin(), { 0, initial_frequency });
+
+        // Other SigMF annotations need not describe frames. Only consume the
+        // labels written by the Wi-Fi latency sample generator.
+        const auto* annotations = metadata.as_object().if_contains("annotations");
+        std::unordered_set<std::string> frame_ids;
+        if (annotations && annotations->is_array()) {
+            for (const auto& value : annotations->as_array()) {
+                if (!value.is_object())
+                    continue;
+                const auto& annotation = value.as_object();
+                const auto* label = annotation.if_contains("core:label");
+                if (!label || !label->is_string())
+                    continue;
+                const std::string id(label->as_string().c_str());
+                if (id.compare(0, 11, "wifi-frame-") != 0)
+                    continue;
+                if (!frame_ids.insert(id).second)
+                    throw std::runtime_error("duplicate Wi-Fi frame label: " + id);
+                const auto& offset = annotation.at("core:sample_start");
+                uint64_t sample_start;
+                if (offset.is_uint64())
+                    sample_start = offset.as_uint64();
+                else if (offset.is_int64() && offset.as_int64() >= 0)
+                    sample_start = static_cast<uint64_t>(offset.as_int64());
+                else
+                    throw std::runtime_error(
+                        "frame core:sample_start must be a nonnegative integer");
+                if (sample_start >= start_sample)
+                    d_frames.push_back({ sample_start - start_sample, sample_start, id });
+            }
+        }
+        std::stable_sort(d_frames.begin(), d_frames.end(),
+                         [](const frame_start& a, const frame_start& b) {
+                             return a.offset < b.offset;
+                         });
     } catch (const std::exception& error) {
         throw std::runtime_error("sigmf_tag_injector: " + metadata_file + ": " +
                                  error.what());
@@ -121,6 +161,28 @@ int sigmf_tag_injector_impl::work(int noutput_items,
             add_item_tag(0, change.first, d_tag_key, pmt::from_double(change.second),
                          pmt::intern(alias()));
         ++d_next_change;
+    }
+    while (d_next_frame < d_frames.size()) {
+        const auto& frame = d_frames[d_next_frame];
+        if (frame.offset >= begin && frame.offset - begin >=
+                                        static_cast<uint64_t>(noutput_items))
+            break;
+        if (frame.offset >= begin) {
+            timespec now;
+            if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+                throw std::system_error(errno, std::generic_category(), "clock_gettime");
+            const uint64_t timestamp_ns = static_cast<uint64_t>(now.tv_sec) *
+                                              1000000000ULL + now.tv_nsec;
+            auto value = pmt::make_dict();
+            value = pmt::dict_add(value, pmt::intern("frame_id"), pmt::intern(frame.id));
+            value = pmt::dict_add(value, pmt::intern("sample_start"),
+                                  pmt::from_uint64(frame.sample_start));
+            value = pmt::dict_add(value, pmt::intern("timestamp_ns"),
+                                  pmt::from_uint64(timestamp_ns));
+            add_item_tag(0, frame.offset, pmt::intern("frame_start"), value,
+                         pmt::intern(alias()));
+        }
+        ++d_next_frame;
     }
     return noutput_items;
 }
