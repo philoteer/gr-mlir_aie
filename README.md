@@ -92,11 +92,62 @@ batching and downstream buffering contribute to measured latency; there is no
 sample-rate interpolation. IDs are recording-local, so include a run/recording
 identifier when aggregating separate experiments.
 
-Run the injector QA, including the generated recording integration test, with:
+### Named intermediate measurement points
+
+`mlir_aie.latency_tag_updater(name, itemsize=8)` passes a stream through and
+appends a named timestamp to each `frame_start`/`frame_end` tag from the injector.
+It is available in GRC as **Latency Tag Updater**, with Measurement Name, Sample
+Type, and Vector Length parameters. In Python, `itemsize` is the complete item
+size in bytes, including vector length.
+
+```python
+first = mlir_aie.latency_tag_updater("after_sync")
+second = mlir_aie.latency_tag_updater("before_decode")
+# Insert first and second at the desired stream measurement points.
+```
+
+The original `timestamp_ns`, frame metadata, tag offsets, and source IDs remain
+intact. Each updater extends a nested PMT dictionary named `timestamps_ns`:
+
+```text
+frame_end = {
+    frame_id: wifi-frame-00000000,
+    sample_start: 100000,
+    sample_offset: 108080,
+    timestamp_ns: <injector ingress time>,
+    timestamps_ns: {
+        after_sync: <first updater ingress time>,
+        before_decode: <second updater ingress time>
+    }
+}
+```
+
+All times are uint64 `CLOCK_MONOTONIC` nanoseconds. Each updater takes one
+timestamp at callback entry and shares it across events in that buffer. Names
+must be nonempty; use a distinct name for each point. If the configured name
+already exists, its original entry is retained. Unrelated tags and malformed
+timestamp tags pass through unchanged. Each input tag produces exactly one
+output tag.
+
+To calculate latency from the injector or between two measurement points:
+
+```python
+times = pmt.dict_ref(tag.value, pmt.intern("timestamps_ns"), pmt.PMT_NIL)
+after_sync_ns = pmt.to_uint64(pmt.dict_ref(
+    times, pmt.intern("after_sync"), pmt.PMT_NIL))
+before_decode_ns = pmt.to_uint64(pmt.dict_ref(
+    times, pmt.intern("before_decode"), pmt.PMT_NIL))
+ingress_ns = pmt.to_uint64(pmt.dict_ref(
+    tag.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL))
+latency_from_injector_ns = before_decode_ns - ingress_ns
+latency_between_points_ns = before_decode_ns - after_sync_ns
+```
+
+Run the latency block QA, including the generated recording integration tests, with:
 
 ```sh
 SIGMF_LATENCY_METADATA=/home/piloteer/xdna_phy/gr-ieee802-11-aie/Experiments/latency/wifi_latency.sigmf-meta \
-  ctest --test-dir gr-mlir_aie/build -R qa_sigmf_tag_injector --output-on-failure
+  ctest --test-dir gr-mlir_aie/build -R 'qa_sigmf_tag_injector|qa_latency_tag_updater' --output-on-failure
 ```
 
 `mlir_aie_80211_phy` and `mlir_aie_80211_phy_evm` automatically use input
