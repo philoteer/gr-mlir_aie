@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(sigmf_tag_injector.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(42311075ea8110c5aad7360429e2ae93)                     */
+/* BINDTOOL_HEADER_FILE_HASH(d14f354ae5d4aff55f8d167e38aba661)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -53,7 +53,6 @@ void bind_sigmf_tag_injector(py::module& m)
 
 
 }
-
 
 
 

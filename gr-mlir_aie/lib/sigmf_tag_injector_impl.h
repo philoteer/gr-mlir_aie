@@ -23,12 +23,14 @@ private:
     pmt::pmt_t d_tag_key;
     std::vector<std::pair<uint64_t, double>> d_changes;
     size_t d_next_change = 0;
-    struct frame_start {
+    struct frame_event {
         uint64_t offset;
         uint64_t sample_start;
+        uint64_t sample_offset;
         std::string id;
+        bool is_end;
     };
-    std::vector<frame_start> d_frames;
+    std::vector<frame_event> d_frames;
     size_t d_next_frame = 0;
 
 public:

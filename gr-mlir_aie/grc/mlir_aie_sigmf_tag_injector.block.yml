@@ -51,12 +51,18 @@ documentation: |-
   seek during playback.
 
   Annotations whose core:label starts with "wifi-frame-" also emit a frame_start
-  tag at core:sample_start. Its PMT dictionary contains frame_id (the label as a
-  symbol), sample_start (original metadata offset, uint64), and timestamp_ns
-  (CLOCK_MONOTONIC nanoseconds, uint64). Frame labels must be unique in the file.
-  Frame starts before Starting Sample Offset are skipped. Other annotations are
-  ignored. Timestamping happens at tag emission, not metadata loading; compare
-  with time.monotonic_ns() downstream. Scheduler batching affects the measured
-  latency. SigMF recording timestamps are not used.
+  tag at core:sample_start. If core:sample_count is present, a frame_end tag is
+  emitted at core:sample_start + core:sample_count - 1 (the last frame sample).
+  Counts must be positive integers and end offsets must fit uint64. Missing
+  counts retain start-only tagging. Both PMT dictionaries contain frame_id
+  (label as a symbol), sample_start (original frame start, uint64), sample_offset
+  (original event offset, uint64), and timestamp_ns (CLOCK_MONOTONIC nanoseconds,
+  uint64). Frame labels must be unique in the file. Events before Starting Sample
+  Offset are skipped independently; a seek into a frame still emits its end.
+  Other annotations are ignored. One timestamp is taken at work() entry before
+  sample copying or tag processing and reused for all events in that callback.
+  This measures buffer ingress, not per-sample arrival. Use
+  time.clock_gettime_ns(time.CLOCK_MONOTONIC) downstream. Scheduler batching
+  affects measured latency. SigMF recording timestamps are not used.
 
 file_format: 1

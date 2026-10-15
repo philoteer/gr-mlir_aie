@@ -1,7 +1,7 @@
 # gr-mlir-aie
 GNU Radio with MLIR-AIE. May contain GPL codes from GNU Radio (therefore licensed in GPL 3.0). MLIR codes from AMD are licensed under Apache 2.0 (which is GPL-compatible).
 
-## SigMF frequency and frame-start tags
+## SigMF frequency and frame boundary tags
 
 `mlir_aie.sigmf_tag_injector(metadata_file, itemsize=8, tag_key="rx_freq",
 start_sample=0)` passes samples through unchanged and reads the corresponding
@@ -48,22 +48,28 @@ Building it requires Boost.JSON (Boost 1.75 or newer).
 
 Annotations with `core:label` beginning `wifi-frame-` (as written by
 `gr-ieee802-11-aie/Experiments/latency/wifi_tx_sigmf.grc`) emit a `frame_start`
-tag at their exact `core:sample_start`. The tag value is a PMT dictionary:
+tag at their exact `core:sample_start`. When `core:sample_count` is present,
+they also emit `frame_end` at `core:sample_start + core:sample_count - 1`, the
+last sample of the annotated frame. Counts must be positive integers and the
+end offset must fit uint64. Annotations without counts retain start-only
+tagging. Both tag values are PMT dictionaries:
 
 | Field | PMT type | Meaning |
 | --- | --- | --- |
 | `frame_id` | symbol | Annotation label, e.g. `wifi-frame-00000000`; unique within the metadata |
-| `sample_start` | uint64 | Original sample offset in the recording |
-| `timestamp_ns` | uint64 | `CLOCK_MONOTONIC` nanoseconds at tag emission |
+| `sample_start` | uint64 | Original frame-start offset in the recording (both events) |
+| `sample_offset` | uint64 | Original offset of this event: frame start or last frame sample |
+| `timestamp_ns` | uint64 | `CLOCK_MONOTONIC` nanoseconds at callback entry |
 
 For the generator's `cf32_le` data, use a Complex Float32 File Source and the
 injector's default `itemsize=8`. Frame tagging is automatic; frequency tagging
 continues to use `rx_freq` or the configured frequency key. Unrelated
 annotations are ignored. Frame labels must be unique; annotation order does
-not matter. An initial seek skips earlier frame starts, including frames whose
-body overlaps the seek position.
+not matter. An initial seek skips earlier events independently: when seeking
+into a frame, its start is skipped but its end is still tagged.
 
-At a downstream measurement point, extract the dictionary and calculate:
+At the decoded-PDU-ready endpoint, use `frame_id` to match the PDU to the
+appropriate event, then calculate latency using `CLOCK_MONOTONIC` explicitly:
 
 ```python
 import time
@@ -71,14 +77,20 @@ import pmt
 
 timestamp_ns = pmt.to_uint64(pmt.dict_ref(
     tag.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL))
-latency_ns = time.monotonic_ns() - timestamp_ns
+latency_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC) - timestamp_ns
 ```
 
-The timestamp is taken during `work()`, not when metadata is loaded. It measures
-software passage through the injector; scheduler batching and downstream
-buffering contribute to measured latency. It is not the recording's wall-clock
-timestamp or an interpolated sample time. IDs are recording-local, so include a
-run/recording identifier when aggregating separate experiments.
+Use `frame_start` for start-to-decode latency or `frame_end` for
+last-frame-sample-ingress-to-decode latency. C++ endpoints should likewise use
+`clock_gettime(CLOCK_MONOTONIC, ...)`.
+
+One timestamp is taken at the beginning of each `work()` callback, before
+sample copying and frequency/frame tag processing. All start/end events in
+that buffer share the timestamp, including single-sample frames. This measures
+buffer ingress into the injector, not individual sample arrival. Scheduler
+batching and downstream buffering contribute to measured latency; there is no
+sample-rate interpolation. IDs are recording-local, so include a run/recording
+identifier when aggregating separate experiments.
 
 Run the injector QA, including the generated recording integration test, with:
 

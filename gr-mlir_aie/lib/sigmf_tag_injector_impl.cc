@@ -10,6 +10,7 @@
 // Compile Boost.JSON here so no separate libboost_json is required.
 #include <boost/json/src.hpp>
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
 #include <cstring>
 #include <fstream>
@@ -19,7 +20,6 @@
 #include <system_error>
 #include <time.h>
 #include <unordered_set>
-#include <cerrno>
 
 namespace gr {
 namespace mlir_aie {
@@ -130,11 +130,31 @@ sigmf_tag_injector_impl::sigmf_tag_injector_impl(const std::string& metadata_fil
                     throw std::runtime_error(
                         "frame core:sample_start must be a nonnegative integer");
                 if (sample_start >= start_sample)
-                    d_frames.push_back({ sample_start - start_sample, sample_start, id });
+                    d_frames.push_back(
+                        { sample_start - start_sample, sample_start, sample_start, id, false });
+                // Keep start-only annotations working, but validate every count
+                // that is provided, even for frames preceding an initial seek.
+                const auto* count = annotation.if_contains("core:sample_count");
+                if (!count)
+                    continue;
+                uint64_t sample_count;
+                if (count->is_uint64() && count->as_uint64() > 0)
+                    sample_count = count->as_uint64();
+                else if (count->is_int64() && count->as_int64() > 0)
+                    sample_count = static_cast<uint64_t>(count->as_int64());
+                else
+                    throw std::runtime_error(
+                        "frame core:sample_count must be a positive integer");
+                if (sample_count - 1 > std::numeric_limits<uint64_t>::max() - sample_start)
+                    throw std::runtime_error("frame end sample offset overflows uint64");
+                const uint64_t sample_end = sample_start + (sample_count - 1);
+                if (sample_end >= start_sample)
+                    d_frames.push_back(
+                        { sample_end - start_sample, sample_start, sample_end, id, true });
             }
         }
         std::stable_sort(d_frames.begin(), d_frames.end(),
-                         [](const frame_start& a, const frame_start& b) {
+                         [](const frame_event& a, const frame_event& b) {
                              return a.offset < b.offset;
                          });
     } catch (const std::exception& error) {
@@ -149,6 +169,13 @@ int sigmf_tag_injector_impl::work(int noutput_items,
                                 gr_vector_const_void_star& input_items,
                                 gr_vector_void_star& output_items)
 {
+    // One ingress timestamp for the entire scheduler buffer, before copying
+    // samples or processing tags. Events in this callback share this time.
+    timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+        throw std::system_error(errno, std::generic_category(), "clock_gettime");
+    const uint64_t timestamp_ns = static_cast<uint64_t>(now.tv_sec) *
+                                      1000000000ULL + now.tv_nsec;
     std::memcpy(output_items[0], input_items[0],
                 static_cast<size_t>(noutput_items) * d_itemsize);
     const uint64_t begin = nitems_written(0);
@@ -168,18 +195,16 @@ int sigmf_tag_injector_impl::work(int noutput_items,
                                         static_cast<uint64_t>(noutput_items))
             break;
         if (frame.offset >= begin) {
-            timespec now;
-            if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
-                throw std::system_error(errno, std::generic_category(), "clock_gettime");
-            const uint64_t timestamp_ns = static_cast<uint64_t>(now.tv_sec) *
-                                              1000000000ULL + now.tv_nsec;
             auto value = pmt::make_dict();
             value = pmt::dict_add(value, pmt::intern("frame_id"), pmt::intern(frame.id));
             value = pmt::dict_add(value, pmt::intern("sample_start"),
                                   pmt::from_uint64(frame.sample_start));
+            value = pmt::dict_add(value, pmt::intern("sample_offset"),
+                                  pmt::from_uint64(frame.sample_offset));
             value = pmt::dict_add(value, pmt::intern("timestamp_ns"),
                                   pmt::from_uint64(timestamp_ns));
-            add_item_tag(0, frame.offset, pmt::intern("frame_start"), value,
+            add_item_tag(0, frame.offset,
+                         pmt::intern(frame.is_end ? "frame_end" : "frame_start"), value,
                          pmt::intern(alias()));
         }
         ++d_next_frame;

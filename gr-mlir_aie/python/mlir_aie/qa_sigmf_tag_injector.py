@@ -24,7 +24,7 @@ class qa_sigmf_tag_injector(gr_unittest.TestCase):
             json.dump({"global": {"core:datatype": "ci16_le"},
                        "captures": captures, "annotations": annotations or []}, file)
 
-    def run_stream(self, start_sample=0, tag_key="rx_freq"):
+    def run_stream(self, start_sample=0, tag_key="rx_freq", single_callback=False):
         samples = tuple(range(24))
         tag = gr.tag_t()
         tag.offset = 7
@@ -33,16 +33,25 @@ class qa_sigmf_tag_injector(gr_unittest.TestCase):
         source = blocks.vector_source_i(samples, False, 1, [tag])
         injector = mlir_aie.sigmf_tag_injector(
             self.path, gr.sizeof_int, tag_key, start_sample)
-        injector.set_max_noutput_items(4)
+        injector.set_max_noutput_items(24 if single_callback else 4)
+        if single_callback:
+            injector.set_min_noutput_items(24)
         sink = blocks.vector_sink_i()
         tb = gr.top_block()
         tb.connect(source, injector, sink)
-        before = time.monotonic_ns()
+        before = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
         tb.run()
-        after = time.monotonic_ns()
+        after = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
         self.frame_tags = [t for t in sink.tags()
                            if pmt.symbol_to_string(t.key) == "frame_start"]
         self.check_frame_timestamps(self.frame_tags, before, after)
+        self.end_tags = [t for t in sink.tags()
+                         if pmt.symbol_to_string(t.key) == "frame_end"]
+        self.check_frame_timestamps(self.end_tags, before, after)
+        self.event_tags = sorted(self.frame_tags + self.end_tags, key=lambda t: t.offset)
+        timestamps = [pmt.to_uint64(pmt.dict_ref(
+            t.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL)) for t in self.event_tags]
+        self.assertEqual(sorted(timestamps), timestamps)
         self.assertEqual(samples, tuple(sink.data()))
         existing = [t for t in sink.tags() if pmt.symbol_to_string(t.key) == "existing"]
         self.assertEqual([(7, 42)], [(t.offset, pmt.to_long(t.value)) for t in existing])
@@ -90,6 +99,46 @@ class qa_sigmf_tag_injector(gr_unittest.TestCase):
         self.assertEqual([0, 4, 23], [t.offset for t in self.frame_tags])
         self.assertEqual([base, base + 4, base + 23], [pmt.to_uint64(pmt.dict_ref(
             t.value, pmt.intern("sample_start"), pmt.PMT_NIL)) for t in self.frame_tags])
+        # The frame starting before the seek still has an end event after it.
+        self.assertEqual([6, 7, 11], [t.offset for t in self.end_tags])
+        self.assertEqual([base - 1, base, base + 4], [pmt.to_uint64(pmt.dict_ref(
+            t.value, pmt.intern("sample_start"), pmt.PMT_NIL)) for t in self.end_tags])
+        self.assertEqual([base + 6, base + 7, base + 11], [pmt.to_uint64(pmt.dict_ref(
+            t.value, pmt.intern("sample_offset"), pmt.PMT_NIL)) for t in self.end_tags])
+
+    def test_frame_ends_and_callback_timestamp(self):
+        self.metadata([], [{"core:sample_start": start, "core:sample_count": count,
+                            "core:label": "wifi-frame-%08d" % start}
+                           for start, count in [(23, 2), (2, 3), (0, 4), (8, 1), (22, 2)]])
+        for single_callback in (False, True):
+            self.assertEqual([], self.run_stream(single_callback=single_callback))
+            self.assertEqual([0, 2, 8, 22, 23], [t.offset for t in self.frame_tags])
+            self.assertEqual([3, 4, 8, 23], [t.offset for t in self.end_tags])
+            for tag in self.event_tags:
+                self.assertEqual(tag.offset, pmt.to_uint64(pmt.dict_ref(
+                    tag.value, pmt.intern("sample_offset"), pmt.PMT_NIL)))
+            if single_callback:
+                timestamps = {pmt.to_uint64(pmt.dict_ref(
+                    t.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL))
+                              for t in self.event_tags}
+                self.assertEqual(1, len(timestamps))
+
+    def test_invalid_frame_counts_and_overflow(self):
+        for start, count in [(0, 0), (0, -1), (0, 1.5), (0, "8"), (0, True),
+                             (0, None), (2**64 - 1, 2), (2**64 - 4, 5)]:
+            with self.subTest(start=start, count=count):
+                self.metadata([], [{"core:sample_start": start, "core:sample_count": count,
+                                    "core:label": "wifi-frame-0"}])
+                with self.assertRaises(RuntimeError):
+                    mlir_aie.sigmf_tag_injector(self.path)
+        # The largest representable end is valid; do not reject it via an
+        # overflowing intermediate start + count calculation.
+        self.metadata([], [{"core:sample_start": 2**64 - 4, "core:sample_count": 4,
+                            "core:label": "wifi-frame-0"}])
+        self.run_stream(2**64 - 4)
+        self.assertEqual([3], [t.offset for t in self.end_tags])
+        self.assertEqual(2**64 - 1, pmt.to_uint64(pmt.dict_ref(
+            self.end_tags[0].value, pmt.intern("sample_offset"), pmt.PMT_NIL)))
 
     def test_invalid_frame_annotations(self):
         for annotations in (
@@ -121,9 +170,9 @@ class qa_sigmf_tag_injector(gr_unittest.TestCase):
         tb = gr.top_block()
         tb.connect(source, injector, samples)
         tb.connect(injector, tags)
-        before = time.monotonic_ns()
+        before = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
         tb.run()
-        after = time.monotonic_ns()
+        after = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
         samples.close()
         with open(data_path, "rb") as original, open(output_path, "rb") as output:
             self.assertEqual(hashlib.sha256(original.read()).digest(),
@@ -137,6 +186,26 @@ class qa_sigmf_tag_injector(gr_unittest.TestCase):
         self.assertEqual(expected, [(t.offset, pmt.symbol_to_string(pmt.dict_ref(
             t.value, pmt.intern("frame_id"), pmt.PMT_NIL))) for t in frames])
         self.check_frame_timestamps(frames, before, after)
+        ends = [t for t in tags.current_tags()
+                if pmt.symbol_to_string(t.key) == "frame_end"]
+        expected_ends = sorted((a["core:sample_start"] + a["core:sample_count"] - 1,
+                                a["core:label"])
+                               for a in metadata["annotations"]
+                               if a.get("core:label", "").startswith("wifi-frame-"))
+        self.assertEqual(expected_ends, [(t.offset, pmt.symbol_to_string(pmt.dict_ref(
+            t.value, pmt.intern("frame_id"), pmt.PMT_NIL))) for t in ends])
+        self.check_frame_timestamps(ends, before, after)
+        for tag in frames + ends:
+            self.assertEqual(tag.offset, pmt.to_uint64(pmt.dict_ref(
+                tag.value, pmt.intern("sample_offset"), pmt.PMT_NIL)))
+        start_times = {pmt.symbol_to_string(pmt.dict_ref(
+            t.value, pmt.intern("frame_id"), pmt.PMT_NIL)): pmt.to_uint64(pmt.dict_ref(
+                t.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL)) for t in frames}
+        for tag in ends:
+            frame_id = pmt.symbol_to_string(pmt.dict_ref(
+                tag.value, pmt.intern("frame_id"), pmt.PMT_NIL))
+            self.assertGreaterEqual(pmt.to_uint64(pmt.dict_ref(
+                tag.value, pmt.intern("timestamp_ns"), pmt.PMT_NIL)), start_times[frame_id])
         frequencies = [(t.offset, pmt.to_double(t.value)) for t in tags.current_tags()
                        if pmt.symbol_to_string(t.key) == "rx_freq"]
         self.assertEqual([(0, metadata["captures"][0]["core:frequency"])], frequencies)

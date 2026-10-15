@@ -18,19 +18,26 @@ namespace gr {
 namespace mlir_aie {
 
 /*!
- * \brief Pass samples through and inject SigMF frequency and frame-start tags.
+ * \brief Pass samples through and inject SigMF frequency and frame boundary tags.
  * \ingroup mlir_aie
  * One stream item must represent one SigMF sample (both I and Q for complex
  * data). Existing tags and sample bytes are preserved. The first known
  * frequency and each subsequent change produce a PMT double tag in Hz.
  * Annotations with core:label beginning "wifi-frame-" produce a "frame_start"
- * PMT dictionary at core:sample_start. Fields are frame_id (the unique label,
- * PMT symbol), sample_start (original SigMF offset, uint64), and timestamp_ns
- * (CLOCK_MONOTONIC nanoseconds at tag emission, uint64). Labels must be unique
- * within the metadata. Unrelated annotations are ignored. Frame starts before
- * start_sample are skipped; annotation order need not be sorted.
- * Timestamps measure software passage through this block, including scheduler
- * batching effects, and are directly comparable to Python time.monotonic_ns().
+ * PMT dictionary at core:sample_start. If core:sample_count is provided, also
+ * emits "frame_end" at core:sample_start + core:sample_count - 1. Counts must be
+ * positive integers and end offsets must fit uint64. Missing counts retain
+ * start-only tagging. Both events contain frame_id (unique label, PMT symbol),
+ * sample_start (original frame start, uint64), sample_offset (original event
+ * offset, uint64), and timestamp_ns (CLOCK_MONOTONIC nanoseconds, uint64).
+ * Labels must be unique within the metadata. Unrelated annotations are ignored.
+ * Events before start_sample are skipped independently; a seek into a frame
+ * still emits its end. Annotation order need not be sorted.
+ * One timestamp is taken at work() entry, before copying samples or processing
+ * tags, and shared by all events in that callback. This is buffer-ingress time,
+ * not per-sample arrival time. Scheduler batching affects measured latency.
+ * Downstream endpoints should use Python time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+ * or C++ clock_gettime(CLOCK_MONOTONIC, ...).
  * Metadata is read once at construction. Playback must not repeat or seek
  * after construction; start_sample supports an initial File Source offset.
  */
