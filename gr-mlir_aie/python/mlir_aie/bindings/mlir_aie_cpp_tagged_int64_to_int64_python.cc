@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_tagged_int64_to_int64.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(11b5b897648ce0cf2a7e2458ba41894c)                     */
+/* BINDTOOL_HEADER_FILE_HASH(6e552602b1936be5b37c62d5b7fc12d4)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -45,7 +45,8 @@ void bind_mlir_aie_cpp_tagged_int64_to_int64(py::module& m)
            py::arg("num_slots") = 1,
            py::arg("N_TILES") = 4,
            py::arg("preprocess") = false,
-           py::arg("nominal_frequency") = 2.417e9
+           py::arg("nominal_frequency") = 2.417e9,
+           py::arg("channel_estimate") = false
         )
         
 
@@ -57,7 +58,3 @@ void bind_mlir_aie_cpp_tagged_int64_to_int64(py::module& m)
 
 
 }
-
-
-
-

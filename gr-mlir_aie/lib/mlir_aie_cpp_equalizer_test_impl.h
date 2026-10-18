@@ -36,7 +36,10 @@ private:
     static constexpr int _CSI_SIZE = 64;
     static constexpr int _CSI_TAG_SIZE = 52;
     static constexpr int _PREPARED_METADATA_WORDS_PER_TILE = 81;
+    static constexpr int _CHANNEL_WORDS_PER_TILE = 16 * 64 * 2;
+    static constexpr int _ESTIMATED_METADATA_WORDS_PER_TILE = _CHANNEL_WORDS_PER_TILE + 81 + 7 + 32;
     const bool _prepared_input;
+    const bool _estimated_input;
     const int _input_meta_words;
     const int _output_meta_words;
 
@@ -119,7 +122,8 @@ public:
                                      int num_slots,
                                      int N_TILES,
                                       const char* weights_path,
-                                      bool prepared_input);
+                                      bool prepared_input,
+                                      bool estimated_input);
     ~mlir_aie_cpp_equalizer_test_impl();
 
     // Where all the action really happens

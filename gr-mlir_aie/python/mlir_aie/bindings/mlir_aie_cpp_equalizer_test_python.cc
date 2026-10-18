@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_equalizer_test.h) */
-/* BINDTOOL_HEADER_FILE_HASH(c1c2cb7f30335a90928e21ae90bc1157)                     */
+/* BINDTOOL_HEADER_FILE_HASH(d4da04c44f6622ac4d2abe98a28caf77)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -49,7 +49,8 @@ void bind_mlir_aie_cpp_equalizer_test(py::module& m)
              py::arg("num_slots") = 1,
              py::arg("N_TILES") = 4,
               py::arg("weights_path") = "",
-              py::arg("prepared_input") = false)
+              py::arg("prepared_input") = false,
+              py::arg("estimated_input") = false)
 
         .def("set_nominal_frequency",
              &mlir_aie_cpp_equalizer_test::set_nominal_frequency)

@@ -44,7 +44,8 @@ public:
                      int num_slots = 1,
                      int N_TILES = 4,
                      const char* weights_path = "",
-                     bool prepared_input = false);
+                     bool prepared_input = false,
+                     bool estimated_input = false);
 
     virtual void set_nominal_frequency(double nominal_frequency) = 0;
     virtual double nominal_frequency() const = 0;

@@ -30,7 +30,8 @@ mlir_aie_cpp_equalizer_test::make(const char* path_xclbin,
                                    int num_slots,
                                    int N_TILES,
                                     const char* weights_path,
-                                    bool prepared_input)
+                                     bool prepared_input,
+                                     bool estimated_input)
 {
     return gnuradio::make_block_sptr<mlir_aie_cpp_equalizer_test_impl>(path_xclbin,
                                                                        path_insts_bin,
@@ -40,7 +41,8 @@ mlir_aie_cpp_equalizer_test::make(const char* path_xclbin,
                                                                        num_slots,
                                                                        N_TILES,
                                                                         weights_path,
-                                                                        prepared_input);
+                                                                        prepared_input,
+                                                                        estimated_input);
 }
 
 mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
@@ -52,13 +54,16 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     int num_slots,
     int N_TILES,
     const char* weights_path,
-    bool prepared_input)
+    bool prepared_input,
+    bool estimated_input)
     : gr::block("mlir_aie_cpp_equalizer_test",
                 gr::io_signature::make(1, 1, sizeof(equalizer_input_type)),
                 gr::io_signature::make(1, 1, sizeof(equalizer_output_type))),
-      _prepared_input(prepared_input),
-      _input_meta_words(prepared_input ? _PREPARED_METADATA_WORDS_PER_TILE : _FFT_METADATA_WORDS_PER_TILE),
-      _output_meta_words(prepared_input ? 2248 : sizeof(tile_metadata) / sizeof(std::int32_t)),
+      _prepared_input(prepared_input || estimated_input),
+      _estimated_input(estimated_input),
+      _input_meta_words(estimated_input ? _ESTIMATED_METADATA_WORDS_PER_TILE :
+                        prepared_input ? _PREPARED_METADATA_WORDS_PER_TILE : _FFT_METADATA_WORDS_PER_TILE),
+      _output_meta_words((prepared_input || estimated_input) ? 2248 : sizeof(tile_metadata) / sizeof(std::int32_t)),
       _VECTOR_SIZE(VECTOR_SIZE),
       _N_TILES(N_TILES),
       _TILE_SIZE(0),
@@ -134,6 +139,7 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     bufInstr = _bo_instr.map<void*>();
     std::memcpy(bufInstr, _instr_v.data(), _instr_v.size() * sizeof(std::uint32_t));
     _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
 
     const auto input_metadata_size =
         _N_TILES * _input_meta_words * sizeof(std::int32_t);
@@ -215,7 +221,7 @@ double mlir_aie_cpp_equalizer_test_impl::nominal_frequency() const
 void mlir_aie_cpp_equalizer_test_impl::forecast(int noutput_items,
                                                 gr_vector_int& ninput_items_required)
 {
-    ninput_items_required[0] = std::max(_VECTOR_SIZE, noutput_items);
+    ninput_items_required[0] = _VECTOR_SIZE;
 }
 
 int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
@@ -252,6 +258,7 @@ int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
 
     const auto wifi_start_key = pmt::intern("wifi_start");
     const auto prepared_key = pmt::intern("frame_equalizer_prepared");
+    const auto estimated_key = pmt::intern("frame_equalizer_estimated");
     const auto frame_bytes_key = pmt::intern("frame bytes");
     const auto encoding_key = pmt::intern("encoding");
     const auto snr_key = pmt::intern("snr");
@@ -280,7 +287,7 @@ int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
     };
 
     const int depth = static_cast<int>(_slots.size());
-    const auto launch = [this, in, input_abs_start, wifi_start_key, prepared_key, to_int32](
+    const auto launch = [this, in, input_abs_start, wifi_start_key, prepared_key, estimated_key, to_int32](
                             int chunk_idx) {
         auto& slot = _slots[chunk_idx % _slots.size()];
         const int chunk_start = chunk_idx * _VECTOR_SIZE;
@@ -300,15 +307,18 @@ int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
             const uint64_t tile_abs_start = chunk_abs_start + tile_idx * _TILE_SIZE;
             std::vector<tag_t> tags;
             if (_prepared_input) {
-                get_tags_in_range(tags, 0, tile_abs_start, tile_abs_start + 1, prepared_key);
+                get_tags_in_range(tags, 0, tile_abs_start, tile_abs_start + 1,
+                                  _estimated_input ? estimated_key : prepared_key);
                 if (tags.size() != 1 || !pmt::is_s32vector(tags[0].value)) {
-                    throw std::runtime_error("missing or ambiguous prepared metadata at tile boundary");
+                    throw std::runtime_error("missing or ambiguous standalone metadata at tile boundary");
                 }
                 std::size_t count;
                 const auto* words = pmt::s32vector_elements(tags[0].value, count);
-                if (count != _PREPARED_METADATA_WORDS_PER_TILE || words[0] != _TILE_SIZE ||
-                    words[1] < 0 || words[1] > _FFT_MAX_TAGS_PER_TILE) {
-                    throw std::runtime_error("prepared metadata ABI or tile alignment mismatch");
+                const int offset = _estimated_input ? _CHANNEL_WORDS_PER_TILE : 0;
+                if (count != static_cast<std::size_t>(_input_meta_words) ||
+                    words[offset] != _TILE_SIZE || words[offset + 1] < 0 ||
+                    words[offset + 1] > _FFT_MAX_TAGS_PER_TILE) {
+                    throw std::runtime_error("standalone metadata ABI or tile alignment mismatch");
                 }
                 std::copy(words, words + count, tile_meta);
                 continue;

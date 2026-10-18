@@ -42,7 +42,10 @@ private:
     static constexpr int _MAX_TAGS_PER_TILE = 31;
     static constexpr int _METADATA_WORDS_PER_TILE = 2 + 2 * _MAX_TAGS_PER_TILE;
     static constexpr int _PREPARED_WORDS_PER_TILE = 81;
+    static constexpr int _CHANNEL_WORDS_PER_TILE = 16 * 64 * 2;
+    static constexpr int _ESTIMATED_WORDS_PER_TILE = _CHANNEL_WORDS_PER_TILE + 81 + 7 + 32;
     bool _preprocess;
+    bool _channel_estimate;
     int _output_meta_words;
 
     const char* _path_xclbin;
@@ -69,7 +72,8 @@ public:
                                          int num_slots,
                                          int N_TILES,
                                          bool preprocess,
-                                         double nominal_frequency);
+                                         double nominal_frequency,
+                                         bool channel_estimate);
     ~mlir_aie_cpp_tagged_int64_to_int64_impl();
 
     // Where all the action really happens

@@ -4,7 +4,7 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_cpp_tagged_int64_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${num_slots}, ${N_TILES}, ${preprocess}, ${nominal_frequency})
+  make: mlir_aie.mlir_aie_cpp_tagged_int64_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${num_slots}, ${N_TILES}, ${preprocess}, ${nominal_frequency}, ${channel_estimate})
 
 parameters:
 - id: path_xclbin
@@ -47,6 +47,11 @@ parameters:
   dtype: real
   default: 2.417e9
   hide: ${ 'none' if preprocess else 'all' }
+
+- id: channel_estimate
+  label: Frame-equalizer channel estimation ABI
+  dtype: bool
+  default: 'False'
 
 inputs:
 - label: in

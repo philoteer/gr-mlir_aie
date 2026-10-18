@@ -40,7 +40,8 @@ public:
                      int num_slots = 1,
                      int N_TILES = 4,
                      bool preprocess = false,
-                     double nominal_frequency = 2.417e9);
+                     double nominal_frequency = 2.417e9,
+                     bool channel_estimate = false);
 };
 
 } // namespace mlir_aie
