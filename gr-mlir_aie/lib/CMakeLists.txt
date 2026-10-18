@@ -42,7 +42,8 @@ list(APPEND mlir_aie_sources
     mlir_aie_80211_phy_evm_impl.cc
     mlir_aie_cpp_equalizer_test_evm_impl.cc
     sigmf_tag_injector_impl.cc
-    latency_tag_updater_impl.cc)
+    latency_tag_updater_impl.cc
+    mlir_aie_cpp_tagged_int64_to_int64_impl.cc)
 
 set(mlir_aie_sources
     "${mlir_aie_sources}"
