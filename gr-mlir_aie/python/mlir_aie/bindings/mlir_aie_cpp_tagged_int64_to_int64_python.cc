@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_tagged_int64_to_int64.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(2869cb98b7efa194df75a1186875b4bb)                     */
+/* BINDTOOL_HEADER_FILE_HASH(e61c710e9422113c981f6997d71c25d3)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,7 +37,13 @@ void bind_mlir_aie_cpp_tagged_int64_to_int64(py::module& m)
         std::shared_ptr<mlir_aie_cpp_tagged_int64_to_int64>>(m, "mlir_aie_cpp_tagged_int64_to_int64", D(mlir_aie_cpp_tagged_int64_to_int64))
 
         .def(py::init(&mlir_aie_cpp_tagged_int64_to_int64::make),
-           D(mlir_aie_cpp_tagged_int64_to_int64,make)
+           D(mlir_aie_cpp_tagged_int64_to_int64,make),
+           py::arg("path_xclbin") = "aie-kernel-src/build/final.xclbin",
+           py::arg("path_insts_bin") = "aie-kernel-src/build/insts.bin",
+           py::arg("kernel_name") = "MLIR_AIE",
+           py::arg("VECTOR_SIZE") = 4096,
+           py::arg("num_slots") = 1,
+           py::arg("N_TILES") = 4
         )
         
 
@@ -49,8 +55,6 @@ void bind_mlir_aie_cpp_tagged_int64_to_int64(py::module& m)
 
 
 }
-
-
 
 
 

@@ -10,16 +10,59 @@
 
 #include <gnuradio/mlir_aie/mlir_aie_cpp_tagged_int64_to_int64.h>
 
+#include "runtime_lib/test_lib/test_utils.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+
+#include <cstdint>
+#include <vector>
+
 namespace gr {
 namespace mlir_aie {
 
 class mlir_aie_cpp_tagged_int64_to_int64_impl : public mlir_aie_cpp_tagged_int64_to_int64
 {
 private:
-    // Nothing to declare in this block.
+    using input_type = std::int64_t;
+    using output_type = std::int64_t;
+
+    struct io_slot {
+        xrt::bo input_bo;
+        xrt::bo output_bo;
+        xrt::bo output_meta_bo;
+        xrt::run run;
+        input_type* input = nullptr;
+        output_type* output = nullptr;
+        std::int32_t* output_meta = nullptr;
+    };
+
+    static constexpr int _MAX_TAGS_PER_TILE = 31;
+    static constexpr int _METADATA_WORDS_PER_TILE = 2 + 2 * _MAX_TAGS_PER_TILE;
+
+    const char* _path_xclbin;
+    const char* _path_insts_bin;
+    int _VECTOR_SIZE;
+    const int _N_TILES;
+    int _TILE_SIZE;
+    const char* _kernel_name;
+    int _trace_size;
+    unsigned int _opcode_run;
+    xrt::kernel _kernel;
+    xrt::bo _bo_instr;
+    std::vector<uint32_t> _instr_v;
+    xrt::device _device;
+    std::vector<io_slot> _slots;
+
+    void* bufInstr;
 
 public:
-    mlir_aie_cpp_tagged_int64_to_int64_impl();
+    mlir_aie_cpp_tagged_int64_to_int64_impl(const char* path_xclbin,
+                                         const char* path_insts_bin,
+                                         const char* kernel_name,
+                                         int VECTOR_SIZE,
+                                         int num_slots,
+                                         int N_TILES);
     ~mlir_aie_cpp_tagged_int64_to_int64_impl();
 
     // Where all the action really happens

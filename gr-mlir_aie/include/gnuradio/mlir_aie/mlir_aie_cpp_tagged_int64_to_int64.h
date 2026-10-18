@@ -15,7 +15,7 @@ namespace gr {
 namespace mlir_aie {
 
 /*!
- * \brief <+description of block+>
+ * \brief Run a tagged int64-to-int64 MLIR-AIE kernel.
  * \ingroup mlir_aie
  *
  */
@@ -33,7 +33,12 @@ public:
      * implementation class. mlir_aie::mlir_aie_cpp_tagged_int64_to_int64::make is the
      * public interface for creating new instances.
      */
-    static sptr make();
+    static sptr make(const char* path_xclbin,
+                     const char* path_insts_bin,
+                     const char* kernel_name,
+                     int VECTOR_SIZE,
+                     int num_slots = 1,
+                     int N_TILES = 4);
 };
 
 } // namespace mlir_aie
