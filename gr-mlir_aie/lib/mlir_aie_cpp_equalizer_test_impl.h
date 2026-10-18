@@ -35,6 +35,10 @@ private:
     static constexpr int _MAX_OUTPUT_TAGS_PER_TILE = 16;
     static constexpr int _CSI_SIZE = 64;
     static constexpr int _CSI_TAG_SIZE = 52;
+    static constexpr int _PREPARED_METADATA_WORDS_PER_TILE = 81;
+    const bool _prepared_input;
+    const int _input_meta_words;
+    const int _output_meta_words;
 
     struct kernel_input_type {
         std::int32_t real;
@@ -114,7 +118,8 @@ public:
                                      double nominal_frequency,
                                      int num_slots,
                                      int N_TILES,
-                                     const char* weights_path);
+                                      const char* weights_path,
+                                      bool prepared_input);
     ~mlir_aie_cpp_equalizer_test_impl();
 
     // Where all the action really happens

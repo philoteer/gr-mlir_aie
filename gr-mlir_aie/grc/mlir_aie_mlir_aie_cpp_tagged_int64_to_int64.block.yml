@@ -4,7 +4,7 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_cpp_tagged_int64_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${num_slots}, ${N_TILES})
+  make: mlir_aie.mlir_aie_cpp_tagged_int64_to_int64(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${num_slots}, ${N_TILES}, ${preprocess}, ${nominal_frequency})
 
 parameters:
 - id: path_xclbin
@@ -36,6 +36,17 @@ parameters:
   label: Number of Tiles
   dtype: int
   default: 4
+
+- id: preprocess
+  label: Frame-equalizer preprocess ABI
+  dtype: bool
+  default: 'False'
+
+- id: nominal_frequency
+  label: Nominal frequency (Hz)
+  dtype: real
+  default: 2.417e9
+  hide: ${ 'none' if preprocess else 'all' }
 
 inputs:
 - label: in

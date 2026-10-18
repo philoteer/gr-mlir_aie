@@ -29,7 +29,8 @@ mlir_aie_cpp_equalizer_test::make(const char* path_xclbin,
                                    double nominal_frequency,
                                    int num_slots,
                                    int N_TILES,
-                                   const char* weights_path)
+                                    const char* weights_path,
+                                    bool prepared_input)
 {
     return gnuradio::make_block_sptr<mlir_aie_cpp_equalizer_test_impl>(path_xclbin,
                                                                        path_insts_bin,
@@ -38,7 +39,8 @@ mlir_aie_cpp_equalizer_test::make(const char* path_xclbin,
                                                                        nominal_frequency,
                                                                        num_slots,
                                                                        N_TILES,
-                                                                       weights_path);
+                                                                        weights_path,
+                                                                        prepared_input);
 }
 
 mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
@@ -49,10 +51,14 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     double nominal_frequency,
     int num_slots,
     int N_TILES,
-    const char* weights_path)
+    const char* weights_path,
+    bool prepared_input)
     : gr::block("mlir_aie_cpp_equalizer_test",
                 gr::io_signature::make(1, 1, sizeof(equalizer_input_type)),
                 gr::io_signature::make(1, 1, sizeof(equalizer_output_type))),
+      _prepared_input(prepared_input),
+      _input_meta_words(prepared_input ? _PREPARED_METADATA_WORDS_PER_TILE : _FFT_METADATA_WORDS_PER_TILE),
+      _output_meta_words(prepared_input ? 2248 : sizeof(tile_metadata) / sizeof(std::int32_t)),
       _VECTOR_SIZE(VECTOR_SIZE),
       _N_TILES(N_TILES),
       _TILE_SIZE(0),
@@ -69,10 +75,16 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
         throw std::invalid_argument("num_slots must be at least 1");
     }
     const bool streamed_weights = weights_path != nullptr && weights_path[0] != '\0';
+    if (_prepared_input && streamed_weights) {
+        throw std::invalid_argument("standalone equalize does not support streamed weights");
+    }
     if (streamed_weights && _VECTOR_SIZE % 64 != 0) {
         throw std::invalid_argument("VECTOR_SIZE must be divisible by 64 for streamed weights");
     }
     _TILE_SIZE = _VECTOR_SIZE / _N_TILES;
+    if (_prepared_input && _TILE_SIZE != 1024) {
+        throw std::invalid_argument("standalone equalize requires 1024-sample tiles");
+    }
 
     std::vector<std::uint8_t> expanded_weights;
     if (streamed_weights) {
@@ -98,19 +110,21 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     set_output_multiple(_VECTOR_SIZE);
 
     _instr_v = test_utils::load_instr_binary(path_insts_bin);
-    const auto [center_mhz, reciprocal_q30] = phy_frequency_rtp(nominal_frequency);
-    const auto locate_rtp = [this](std::uint32_t marker) {
-        const auto it = std::find(_instr_v.begin(), _instr_v.end(), marker);
-        if (it == _instr_v.end() ||
-            std::find(std::next(it), _instr_v.end(), marker) != _instr_v.end()) {
-            throw std::runtime_error("center-frequency RTP marker is missing or ambiguous");
-        }
-        return static_cast<std::size_t>(std::distance(_instr_v.begin(), it));
-    };
-    _center_mhz_index = locate_rtp(0x13579BDFu);
-    _reciprocal_q30_index = locate_rtp(0x2468ACE0u);
-    _instr_v[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
-    _instr_v[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
+    if (!_prepared_input) {
+        const auto [center_mhz, reciprocal_q30] = phy_frequency_rtp(nominal_frequency);
+        const auto locate_rtp = [this](std::uint32_t marker) {
+            const auto it = std::find(_instr_v.begin(), _instr_v.end(), marker);
+            if (it == _instr_v.end() ||
+                std::find(std::next(it), _instr_v.end(), marker) != _instr_v.end()) {
+                throw std::runtime_error("center-frequency RTP marker is missing or ambiguous");
+            }
+            return static_cast<std::size_t>(std::distance(_instr_v.begin(), it));
+        };
+        _center_mhz_index = locate_rtp(0x13579BDFu);
+        _reciprocal_q30_index = locate_rtp(0x2468ACE0u);
+        _instr_v[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
+        _instr_v[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
+    }
     test_utils::init_xrt_load_kernel(_device, _kernel, 1, path_xclbin, kernel_name);
 
     _bo_instr = xrt::bo(_device,
@@ -122,8 +136,8 @@ mlir_aie_cpp_equalizer_test_impl::mlir_aie_cpp_equalizer_test_impl(
     _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
     const auto input_metadata_size =
-        _N_TILES * _FFT_METADATA_WORDS_PER_TILE * sizeof(std::int32_t);
-    const auto output_metadata_size = _N_TILES * sizeof(tile_metadata);
+        _N_TILES * _input_meta_words * sizeof(std::int32_t);
+    const auto output_metadata_size = _N_TILES * _output_meta_words * sizeof(std::int32_t);
     _slots.resize(num_slots);
     for (auto& slot : _slots) {
         slot.input_bo = xrt::bo(_device,
@@ -219,22 +233,25 @@ int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
 
     // The previous general_work call waited for every run. Update the shared
     // instruction BO only here, before starting any run in this batch.
-    const auto [center_mhz, reciprocal_q30] =
-        phy_frequency_rtp(_nominal_frequency.load());
-    if (_instr_v[_center_mhz_index] != static_cast<std::uint32_t>(center_mhz) ||
-        _instr_v[_reciprocal_q30_index] != static_cast<std::uint32_t>(reciprocal_q30)) {
-        auto* instr = static_cast<std::uint32_t*>(bufInstr);
-        instr[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
-        instr[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
-        _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-        std::cout << "mlir_aie_cpp_equalizer_test: nominal frequency changed from "
-                  << _instr_v[_center_mhz_index] << " MHz to " << center_mhz
-                  << " MHz" << std::endl;
-        _instr_v[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
-        _instr_v[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
+    if (!_prepared_input) {
+        const auto [center_mhz, reciprocal_q30] =
+            phy_frequency_rtp(_nominal_frequency.load());
+        if (_instr_v[_center_mhz_index] != static_cast<std::uint32_t>(center_mhz) ||
+            _instr_v[_reciprocal_q30_index] != static_cast<std::uint32_t>(reciprocal_q30)) {
+            auto* instr = static_cast<std::uint32_t*>(bufInstr);
+            instr[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
+            instr[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
+            _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+            std::cout << "mlir_aie_cpp_equalizer_test: nominal frequency changed from "
+                      << _instr_v[_center_mhz_index] << " MHz to " << center_mhz
+                      << " MHz" << std::endl;
+            _instr_v[_center_mhz_index] = static_cast<std::uint32_t>(center_mhz);
+            _instr_v[_reciprocal_q30_index] = static_cast<std::uint32_t>(reciprocal_q30);
+        }
     }
 
     const auto wifi_start_key = pmt::intern("wifi_start");
+    const auto prepared_key = pmt::intern("frame_equalizer_prepared");
     const auto frame_bytes_key = pmt::intern("frame bytes");
     const auto encoding_key = pmt::intern("encoding");
     const auto snr_key = pmt::intern("snr");
@@ -263,7 +280,7 @@ int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
     };
 
     const int depth = static_cast<int>(_slots.size());
-    const auto launch = [this, in, input_abs_start, wifi_start_key, to_int32](
+    const auto launch = [this, in, input_abs_start, wifi_start_key, prepared_key, to_int32](
                             int chunk_idx) {
         auto& slot = _slots[chunk_idx % _slots.size()];
         const int chunk_start = chunk_idx * _VECTOR_SIZE;
@@ -277,11 +294,25 @@ int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
 
         std::memset(slot.input_meta,
                     0,
-                    _N_TILES * _FFT_METADATA_WORDS_PER_TILE * sizeof(std::int32_t));
+                    _N_TILES * _input_meta_words * sizeof(std::int32_t));
         for (int tile_idx = 0; tile_idx < _N_TILES; ++tile_idx) {
-            auto* tile_meta = slot.input_meta + tile_idx * _FFT_METADATA_WORDS_PER_TILE;
+            auto* tile_meta = slot.input_meta + tile_idx * _input_meta_words;
             const uint64_t tile_abs_start = chunk_abs_start + tile_idx * _TILE_SIZE;
             std::vector<tag_t> tags;
+            if (_prepared_input) {
+                get_tags_in_range(tags, 0, tile_abs_start, tile_abs_start + 1, prepared_key);
+                if (tags.size() != 1 || !pmt::is_s32vector(tags[0].value)) {
+                    throw std::runtime_error("missing or ambiguous prepared metadata at tile boundary");
+                }
+                std::size_t count;
+                const auto* words = pmt::s32vector_elements(tags[0].value, count);
+                if (count != _PREPARED_METADATA_WORDS_PER_TILE || words[0] != _TILE_SIZE ||
+                    words[1] < 0 || words[1] > _FFT_MAX_TAGS_PER_TILE) {
+                    throw std::runtime_error("prepared metadata ABI or tile alignment mismatch");
+                }
+                std::copy(words, words + count, tile_meta);
+                continue;
+            }
             get_tags_in_range(
                 tags, 0, tile_abs_start, tile_abs_start + _TILE_SIZE, wifi_start_key);
 
@@ -311,7 +342,8 @@ int mlir_aie_cpp_equalizer_test_impl::general_work(int noutput_items,
         slot.output_meta_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
         for (int tile_idx = 0; tile_idx < _N_TILES; ++tile_idx) {
-            const tile_metadata& tile_meta = slot.output_meta[tile_idx];
+            const tile_metadata& tile_meta = *reinterpret_cast<const tile_metadata*>(
+                reinterpret_cast<const std::int32_t*>(slot.output_meta) + tile_idx * _output_meta_words);
             const int tile_len = std::clamp(tile_meta.output_length, 0, _TILE_SIZE);
             const int tag_count =
                 std::clamp(tile_meta.tag_count, 0, _MAX_OUTPUT_TAGS_PER_TILE);

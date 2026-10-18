@@ -29,16 +29,21 @@ private:
 
     struct io_slot {
         xrt::bo input_bo;
+        xrt::bo input_meta_bo;
         xrt::bo output_bo;
         xrt::bo output_meta_bo;
         xrt::run run;
         input_type* input = nullptr;
+        std::int32_t* input_meta = nullptr;
         output_type* output = nullptr;
         std::int32_t* output_meta = nullptr;
     };
 
     static constexpr int _MAX_TAGS_PER_TILE = 31;
     static constexpr int _METADATA_WORDS_PER_TILE = 2 + 2 * _MAX_TAGS_PER_TILE;
+    static constexpr int _PREPARED_WORDS_PER_TILE = 81;
+    bool _preprocess;
+    int _output_meta_words;
 
     const char* _path_xclbin;
     const char* _path_insts_bin;
@@ -62,7 +67,9 @@ public:
                                          const char* kernel_name,
                                          int VECTOR_SIZE,
                                          int num_slots,
-                                         int N_TILES);
+                                         int N_TILES,
+                                         bool preprocess,
+                                         double nominal_frequency);
     ~mlir_aie_cpp_tagged_int64_to_int64_impl();
 
     // Where all the action really happens

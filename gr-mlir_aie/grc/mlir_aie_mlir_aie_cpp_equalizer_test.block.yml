@@ -4,7 +4,7 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_cpp_equalizer_test(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency}, ${num_slots}, ${N_TILES}, ${weights_path})
+  make: mlir_aie.mlir_aie_cpp_equalizer_test(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency}, ${num_slots}, ${N_TILES}, ${weights_path}, ${prepared_input})
   callbacks:
   - set_nominal_frequency(${nominal_frequency})
 
@@ -48,6 +48,11 @@ parameters:
   label: Runtime weights
   dtype: raw
   default: "''"
+
+- id: prepared_input
+  label: Standalone equalize (prepared metadata)
+  dtype: bool
+  default: 'False'
 
 inputs:
 - label: in

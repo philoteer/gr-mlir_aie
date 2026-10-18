@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_tagged_int64_to_int64.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(e61c710e9422113c981f6997d71c25d3)                     */
+/* BINDTOOL_HEADER_FILE_HASH(11b5b897648ce0cf2a7e2458ba41894c)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -43,7 +43,9 @@ void bind_mlir_aie_cpp_tagged_int64_to_int64(py::module& m)
            py::arg("kernel_name") = "MLIR_AIE",
            py::arg("VECTOR_SIZE") = 4096,
            py::arg("num_slots") = 1,
-           py::arg("N_TILES") = 4
+           py::arg("N_TILES") = 4,
+           py::arg("preprocess") = false,
+           py::arg("nominal_frequency") = 2.417e9
         )
         
 
@@ -55,8 +57,6 @@ void bind_mlir_aie_cpp_tagged_int64_to_int64(py::module& m)
 
 
 }
-
-
 
 
 
