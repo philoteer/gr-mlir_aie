@@ -10,7 +10,7 @@
 srcdir := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # mlir-aie/programming_examples/makefile-common
-AIETOOLS_DIR ?= $(shell realpath $(dir $(shell which xchesscc))/../)
+include $(srcdir)/../makefile-common
 AIE_INCLUDE_DIR ?= ${AIETOOLS_DIR}/data/versal_prod/lib
 AIE2_INCLUDE_DIR ?= ${AIETOOLS_DIR}/data/aie_ml/lib
 
@@ -25,8 +25,8 @@ CHESS_FLAGS = -P ${AIE_INCLUDE_DIR}
 CHESSCCWRAP1_FLAGS = aie -I ${AIETOOLS_DIR}/include
 CHESSCCWRAP2_FLAGS = aie2 -I ${AIETOOLS_DIR}/include
 CHESSCCWRAP2P_FLAGS = aie2p -I ${AIETOOLS_DIR}/include
-PEANOWRAP2_FLAGS = -O2 -std=c++20 --target=aie2-none-unknown-elf ${WARNING_FLAGS} -DNDEBUG -I ${MLIR_AIE_DIR}/include
-PEANOWRAP2P_FLAGS = -O2 -std=c++20 --target=aie2p-none-unknown-elf ${WARNING_FLAGS} -DNDEBUG -I ${MLIR_AIE_DIR}/include
+PEANOWRAP2_FLAGS = -O2 -std=c++20 --target=aie2-none-unknown-elf ${WARNING_FLAGS} -DNDEBUG -D__AIENGINE__ -D__AIE_API_AIE_ADF_HPP__ -I ${MLIR_AIE_DIR}/include
+PEANOWRAP2P_FLAGS = -O2 -std=c++20 --target=aie2p-none-unknown-elf ${WARNING_FLAGS} -DNDEBUG -D__AIENGINE__ -D__AIE_API_AIE_ADF_HPP__ -I ${MLIR_AIE_DIR}/include
 
 TEST_POWERSHELL := $(shell command -v powershell.exe >/dev/null 2>&1 && echo yes || echo no)
 ifeq ($(TEST_POWERSHELL),yes)
@@ -60,9 +60,8 @@ endif
 
 build/final.xclbin: build/aie.mlir build/scale.o
 	mkdir -p ${@D}
-	cd ${@D} && aiecc.py --aie-generate-xclbin --no-compile-host --xclbin-name=${@F} \
-				--no-xchesscc --no-xbridge \
-				--aie-generate-npu-insts --npu-insts-name=insts.bin $(<:%=../%)
+	cd ${@D} && $(AIECC) $(AIECC_FLAGS) --xclbin-name=${@F} \
+				--npu-insts-name=insts.bin $(<:%=../%)
 
 clean: 
 	rm -rf build _build 

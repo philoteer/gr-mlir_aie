@@ -4,9 +4,12 @@
 import argparse
 
 import numpy as np
-from aie.iron import Kernel, ObjectFifo, Program, Runtime, Worker
+from aie.iron import Kernel, ObjectFifo, Worker
 from aie.iron.device import NPU1Col1, NPU2Col1
-from aie.iron.placers import SequentialPlacer
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from iron_compat import Program, Runtime, SequentialPlacer
 
 
 PAYLOAD_WORDS = 1024
@@ -41,7 +44,8 @@ def build_program(device):
         runtime.fill(input_fifo.prod(), host_input)
         runtime.drain(output_fifo.cons(), host_output, wait=True)
 
-    return Program(device, runtime).resolve_program(SequentialPlacer())
+    program = Program(device, runtime)
+    return program.resolve_program(SequentialPlacer()) if SequentialPlacer else program.resolve_program()
 
 
 def main():

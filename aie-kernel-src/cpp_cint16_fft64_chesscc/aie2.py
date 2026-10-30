@@ -4,10 +4,12 @@ import sys
 
 import aie.iron as iron
 import numpy as np
-from aie.iron import Kernel, ObjectFifo, Program, Runtime, Worker
+from aie.iron import Kernel, ObjectFifo, Worker
 from aie.iron.controlflow import range_
 from aie.iron.device import NPU1, NPU2
-from aie.iron.placers import SequentialPlacer
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from iron_compat import Program, Runtime, SequentialPlacer
 
 
 if len(sys.argv) > 1:
@@ -58,4 +60,4 @@ with runtime.sequence(in_tensor_ty, out_tensor_ty, out_tensor_ty) as (
     runtime.drain(of_out.cons(), output_tensor, wait=True)
 
 program = Program(dev, runtime)
-print(program.resolve_program(SequentialPlacer()))
+print(program.resolve_program(SequentialPlacer()) if SequentialPlacer else program.resolve_program())

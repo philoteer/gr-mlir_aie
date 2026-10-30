@@ -9,10 +9,12 @@ import sys
 import ml_dtypes
 import numpy as np
 
-from aie.iron import Kernel, ObjectFifo, Program, Runtime, Worker
+from aie.iron import Kernel, ObjectFifo, Worker
 from aie.iron.controlflow import range_
 from aie.iron.device import NPU1, NPU2
-from aie.iron.placers import SequentialPlacer
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from iron_compat import Program, Runtime, SequentialPlacer
 import aie.iron as iron
 
 
@@ -60,5 +62,5 @@ with rt.sequence(in_tensor_ty, out_tensor_ty, out_tensor_ty) as (a_in, b_out, _)
     rt.drain(of_out.cons(), b_out, wait=True)
 
 my_program = Program(dev, rt)
-module = my_program.resolve_program(SequentialPlacer())
+module = my_program.resolve_program(SequentialPlacer()) if SequentialPlacer else my_program.resolve_program()
 print(module)

@@ -3,11 +3,8 @@
 .DEFAULT_GOAL := all
 
 srcdir := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-export LD_LIBRARY_PATH := /opt/vitis_aie_essentials/lib/lnx64.o/:$(LD_LIBRARY_PATH)
-export RDI_DATADIR := /opt/vitis_aie_essentials/data
-export PATH := /opt/vitis_aie_essentials/tps/lnx64/target_aie_ml/bin/LNa64bin/:$(PATH)
-
-AIETOOLS_DIR ?= /opt/vitis_aie_essentials
+USE_CHESS = 1
+include $(srcdir)/../makefile-common
 CHESSCCWRAP2_FLAGS = aie2 -I ${AIETOOLS_DIR}/include
 CHESSCCWRAP2P_FLAGS = aie2p -I ${AIETOOLS_DIR}/include
 devicename ?= $(if $(filter 1,$(NPU2)),npu2,npu)
@@ -31,9 +28,9 @@ else
 endif
 
 build/final.xclbin: build/aie.mlir build/fft64.o
-	cd ${@D} && aiecc.py --aie-generate-xclbin --no-compile-host \
+	cd ${@D} && $(AIECC) $(AIECC_FLAGS) \
 		--xclbin-name=${@F} \
-		--aie-generate-npu-insts --npu-insts-name=insts.bin $(<:%=../%)
+		--npu-insts-name=insts.bin $(<:%=../%)
 
 build/insts.bin: build/final.xclbin
 	@test -f $@

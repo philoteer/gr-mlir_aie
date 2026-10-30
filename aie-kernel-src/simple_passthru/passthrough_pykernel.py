@@ -9,13 +9,23 @@ import numpy as np
 import sys
 
 import aie.iron as iron
-from aie.iron import ObjectFifo, Program, Runtime, Worker
-from aie.iron.placers import SequentialPlacer
+from aie.iron import ObjectFifo, Worker
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from iron_compat import Program, Runtime, SequentialPlacer
 from aie.iron.device import NPU1Col1, NPU2
 from aie.iron.controlflow import range_
 from aie.helpers.dialects.func import func
 
-dev = iron.get_current_device()
+if len(sys.argv) > 1:
+    if sys.argv[1] == "npu":
+        dev = NPU1Col1()
+    elif sys.argv[1] == "npu2":
+        dev = NPU2()
+    else:
+        raise ValueError(f"Unsupported device: {sys.argv[1]}")
+else:
+    dev = iron.get_current_device()
 vector_size=4096
 line_size = vector_size // 4
 
@@ -59,7 +69,7 @@ with rt.sequence(vector_type, vector_type, vector_type) as (a_in, b_out, _):
 my_program = Program(dev, rt)
 
 # Place components (assign them resources on the device) and generate an MLIR module
-module = my_program.resolve_program(SequentialPlacer())
+module = my_program.resolve_program(SequentialPlacer()) if SequentialPlacer else my_program.resolve_program()
 
 # Print the generated MLIR
 print(module)

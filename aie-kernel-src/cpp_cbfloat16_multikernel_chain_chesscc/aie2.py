@@ -38,8 +38,10 @@ import sys
 import ml_dtypes
 import numpy as np
 
-from aie.iron import Kernel, ObjectFifo, Program, Runtime, Worker
-from aie.iron.placers import SequentialPlacer
+from aie.iron import Kernel, ObjectFifo, Worker
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from iron_compat import Program, Runtime, SequentialPlacer
 from aie.iron.controlflow import range_
 from aie.iron.device import NPU1, NPU2
 import aie.iron as iron
@@ -129,7 +131,7 @@ with rt.sequence(tensor_ty, tensor_ty, tensor_ty) as (a_in, b_out, _):
 my_program = Program(dev, rt)
 
 # Place components (assign them resources on the device) and generate an MLIR module
-module = my_program.resolve_program(SequentialPlacer())
+module = my_program.resolve_program(SequentialPlacer()) if SequentialPlacer else my_program.resolve_program()
 
 # Print the generated MLIR
 print(module)

@@ -11,9 +11,12 @@
 import numpy as np
 import ml_dtypes
 import sys
+import inspect
 
-from aie.iron import Kernel, ObjectFifo, Program, Runtime, Worker
-from aie.iron.placers import SequentialPlacer
+from aie.iron import Kernel, ObjectFifo, Worker
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from iron_compat import Program, Runtime, SequentialPlacer
 from aie.iron.device import NPU1, NPU2
 from aie.iron.controlflow import range_
 import aie.iron as iron
@@ -57,7 +60,17 @@ scale_fn = Kernel(
 of_in = ObjectFifo(in_tile_ty, name="in")
 in_dims =[(1, stride_in * 2), (4, 512), (512, 1)]
 
-of_in_mem = of_in.cons().forward(name="in_mem",  dims_to_stream=in_dims)
+in_consumer = of_in.cons()
+if "dims_to_stream" in inspect.signature(in_consumer.forward).parameters:
+    of_in_mem = in_consumer.forward(name="in_mem", dims_to_stream=in_dims)
+else:
+    from aie.helpers.taplib import TensorAccessPattern
+    in_pattern = TensorAccessPattern(
+        [tile_size_in * 2], 0,
+        sizes=[size for size, _ in in_dims],
+        strides=[stride for _, stride in in_dims],
+    )
+    of_in_mem = in_consumer.forward(name="in_mem", to_stream=in_pattern)
 
 # Output data movement
 of_out = ObjectFifo(out_tile_ty, name="out")
@@ -86,7 +99,7 @@ with rt.sequence(in_tensor_ty, out_tensor_ty, in_tensor_ty) as (a_in, b_out, _):
 my_program = Program(dev, rt)
 
 # Place components (assign them resources on the device) and generate an MLIR module
-module = my_program.resolve_program(SequentialPlacer())
+module = my_program.resolve_program(SequentialPlacer()) if SequentialPlacer else my_program.resolve_program()
 
 # Print the generated MLIR
 print(module)

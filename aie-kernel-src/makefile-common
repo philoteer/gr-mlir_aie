@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+# Chess compilation is memory-intensive, including aiecc's per-core jobs.
+.NOTPARALLEL:
+.DELETE_ON_ERROR:
+
+AIETOOLS_DIR ?= $(if $(AIETOOLS_ROOT),$(AIETOOLS_ROOT),/opt/vitis_aie_essentials)
+export AIETOOLS_ROOT := $(AIETOOLS_DIR)
+export RDI_DATADIR := $(AIETOOLS_DIR)/data
+# Vitis bundles a different libLLVM: do not inject it into Peano builds.
+ifeq ($(USE_CHESS),1)
+export LD_LIBRARY_PATH := $(AIETOOLS_DIR)/lib/lnx64.o:$(LD_LIBRARY_PATH)
+endif
+# Use the installation's launcher, not target_aie_ml's internal executable:
+# the launcher selects aie2/aie2p and sets up the matching runtime libraries.
+export PATH := $(AIETOOLS_DIR)/bin:$(PATH)
+
+# Prefer the old driver when available to preserve controlled legacy setups.
+AIECC ?= $(shell command -v aiecc.py 2>/dev/null || command -v aiecc 2>/dev/null)
+ifeq ($(notdir $(AIECC)),aiecc.py)
+AIECC_FLAGS = -j 1 --aie-generate-xclbin --aie-generate-npu-insts --no-compile-host $(if $(filter 1,$(USE_CHESS)),,--no-xchesscc --no-xbridge)
+else
+AIECC_FLAGS = -j 1 --get-xclbin --get-npu-insts --placer=sequential_placer $(if $(filter 1,$(USE_CHESS)),--xchesscc --xbridge)
+endif
+
+# insts.bin is produced alongside final.xclbin, not by a separate invocation.
+all: build/final.xclbin build/insts.bin
+build/insts.bin: build/final.xclbin
+
+.PHONY: all compile clean

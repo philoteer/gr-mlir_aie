@@ -7,11 +7,9 @@
 
 srcdir := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-export LD_LIBRARY_PATH := /opt/vitis_aie_essentials/lib/lnx64.o/:$(LD_LIBRARY_PATH)
-export RDI_DATADIR := /opt/vitis_aie_essentials/data
-export PATH := /opt/vitis_aie_essentials/tps/lnx64/target_aie_ml/bin/LNa64bin/:$(PATH)
+USE_CHESS = 1
+include $(srcdir)/../makefile-common
 
-AIETOOLS_DIR = /opt/vitis_aie_essentials/
 AIE_INCLUDE_DIR ?= ${AIETOOLS_DIR}/data/versal_prod/lib
 AIE2_INCLUDE_DIR ?= ${AIETOOLS_DIR}/data/aie_ml/lib
 
@@ -37,8 +35,8 @@ build/convert.o: ${srcdir}/convert.cc
 
 build/final.xclbin: build/aie.mlir build/convert.o
 	mkdir -p ${@D}
-	cd ${@D} && aiecc.py --aie-generate-xclbin --no-compile-host --xclbin-name=${@F} \
-			--aie-generate-npu-insts --npu-insts-name=insts.bin $(<:%=../%)
+	cd ${@D} && $(AIECC) $(AIECC_FLAGS) --xclbin-name=${@F} \
+			--npu-insts-name=insts.bin $(<:%=../%)
 
 # aiecc.py emits insts.bin as a side effect of the xclbin target.
 build/insts.bin: build/final.xclbin
