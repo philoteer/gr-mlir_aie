@@ -52,6 +52,7 @@ namespace py = pybind11;
     void bind_sigmf_tag_injector(py::module& m);
     void bind_latency_tag_updater(py::module& m);
     void bind_mlir_aie_cpp_tagged_int64_to_int64(py::module& m);
+    void bind_mlir_aie_80211_phy_thru_mac_decode(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -111,5 +112,6 @@ PYBIND11_MODULE(mlir_aie_python, m)
     bind_sigmf_tag_injector(m);
     bind_latency_tag_updater(m);
     bind_mlir_aie_cpp_tagged_int64_to_int64(m);
+    bind_mlir_aie_80211_phy_thru_mac_decode(m);
     // ) END BINDING_FUNCTION_CALLS
 }
