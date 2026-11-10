@@ -153,6 +153,10 @@ int mlir_aie_80211_phy_thru_mac_decode_impl::general_work(
         _instructions[_center_mhz_index] = _instr_v[_center_mhz_index];
         _instructions[_reciprocal_q30_index] = _instr_v[_reciprocal_q30_index];
         _bo_instr.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+        std::cout << "mlir_aie_80211_phy: nominal frequency changed to "
+                  << _instr_v[_center_mhz_index] << " MHz" 
+                  << " MHz" << std::endl;
+
     }
 
     const int depth = static_cast<int>(_slots.size());
