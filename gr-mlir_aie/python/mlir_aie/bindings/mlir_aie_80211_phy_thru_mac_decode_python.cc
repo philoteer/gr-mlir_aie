@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_80211_phy_thru_mac_decode.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(60c7a7839e59d8faef3bbb309fc9486e)                     */
+/* BINDTOOL_HEADER_FILE_HASH(b42341633917cfb4c732cc7dcabe2f8d)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,8 +37,17 @@ void bind_mlir_aie_80211_phy_thru_mac_decode(py::module& m)
         std::shared_ptr<mlir_aie_80211_phy_thru_mac_decode>>(m, "mlir_aie_80211_phy_thru_mac_decode", D(mlir_aie_80211_phy_thru_mac_decode))
 
         .def(py::init(&mlir_aie_80211_phy_thru_mac_decode::make),
-           D(mlir_aie_80211_phy_thru_mac_decode,make)
-        )
+           D(mlir_aie_80211_phy_thru_mac_decode,make),
+           py::arg("path_xclbin"),
+           py::arg("path_insts_bin"),
+           py::arg("kernel_name"),
+           py::arg("VECTOR_SIZE") = 16384,
+           py::arg("nominal_frequency") = 2.417e9,
+           py::arg("num_slots") = 2,
+           py::arg("N_TILES") = 16
+         )
+        .def("set_nominal_frequency", &mlir_aie_80211_phy_thru_mac_decode::set_nominal_frequency)
+        .def("nominal_frequency", &mlir_aie_80211_phy_thru_mac_decode::nominal_frequency)
         
 
 
@@ -49,7 +58,6 @@ void bind_mlir_aie_80211_phy_thru_mac_decode(py::module& m)
 
 
 }
-
 
 
 

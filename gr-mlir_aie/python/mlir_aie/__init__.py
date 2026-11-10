@@ -19,10 +19,23 @@ try:
 except ModuleNotFoundError:
     pass
 
-# import any pure python here
-from .mlir_aie_python_uint8 import mlir_aie_python_uint8
-from .mlir_aie_python_int32 import mlir_aie_python_int32
-from .mlir_aie_python_bfloat16 import mlir_aie_python_bfloat16
-from .mlir_aie_python_tagged_int32_to_int64 import mlir_aie_python_tagged_int32_to_int64
-from .mlir_aie_python_tagged_int32_to_int32 import mlir_aie_python_tagged_int32_to_int32
-#
+# C++ XRT blocks do not need the compiler's Python environment (which can
+# use a different NumPy ABI than GNU Radio). Load Python/IRON blocks only
+# when requested, so importing the C++ blocks works with system Python.
+_python_blocks = {
+    'mlir_aie_python_uint8',
+    'mlir_aie_python_int32',
+    'mlir_aie_python_bfloat16',
+    'mlir_aie_python_tagged_int32_to_int64',
+    'mlir_aie_python_tagged_int32_to_int32',
+}
+__all__ = [name for name in globals() if not name.startswith('_')] + sorted(_python_blocks)
+
+
+def __getattr__(name):
+    if name not in _python_blocks:
+        raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+    from importlib import import_module
+    block = getattr(import_module(f'.{name}', __name__), name)
+    globals()[name] = block
+    return block

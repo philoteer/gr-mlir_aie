@@ -4,44 +4,62 @@ category: '[mlir_aie]'
 
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_80211_phy_thru_mac_decode()
+  make: mlir_aie.mlir_aie_80211_phy_thru_mac_decode(${path_xclbin}, ${path_insts_bin}, ${kernel_name}, ${VECTOR_SIZE}, ${nominal_frequency}, ${num_slots}, ${N_TILES})
+  callbacks:
+  - set_nominal_frequency(${nominal_frequency})
 
-#  Make one 'parameters' list entry for every parameter you want settable from the GUI.
-#     Keys include:
-#     * id (makes the value accessible as keyname, e.g. in the make entry)
-#     * label (label shown in the GUI)
-#     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#     * default
 parameters:
-- id: parametername_replace_me
-  label: FIX ME:
+- id: path_xclbin
+  label: path_xclbin
+  dtype: file_open
+  default: 'kernel/build/final.xclbin'
+- id: path_insts_bin
+  label: path_insts_bin
+  dtype: file_open
+  default: 'kernel/build/insts.bin'
+- id: kernel_name
+  label: kernel_name
   dtype: string
-  default: You need to fill in your grc/mlir_aie_mlir_aie_80211_phy_thru_mac_decode.block.yaml
-#- id: ...
-#  label: ...
-#  dtype: ...
+  default: 'MLIR_AIE'
+- id: VECTOR_SIZE
+  label: VECTOR_SIZE
+  dtype: int
+  default: 16384
+- id: nominal_frequency
+  label: Nominal Frequency (Hz)
+  dtype: real
+  default: 2.417e9
+- id: num_slots
+  label: Num Slots (NPU pipelining depth)
+  dtype: int
+  default: 2
+- id: N_TILES
+  label: Number of Tiles
+  dtype: int
+  default: 16
 
-#  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
-#  Keys include:
-#      * label (an identifier for the GUI)
-#      * domain (optional - stream or message. Default is stream)
-#      * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#      * vlen (optional - data stream vector length. Default is 1)
-#      * optional (optional - set to 1 for optional inputs. Default is 0)
+asserts:
+- ${ N_TILES > 0 }
+- ${ VECTOR_SIZE == N_TILES * 1024 }
+- ${ num_slots > 0 }
+
 inputs:
-#- label: ...
-#  domain: ...
-#  dtype: ...
-#  vlen: ...
-#  optional: ...
+- label: in
+  domain: stream
+  dtype: int
 
 outputs:
-#- label: ...
-#  domain: ...
-#  dtype: ...
-#  vlen: ...
-#  optional: ...
+- label: out
+  domain: message
 
-#  'file_format' specifies the version of the GRC yml format used in the file
-#  and should usually not be changed.
+documentation: |-
+  Packed cint16 IQ input to CRC-valid MAC PDUs entirely on the NPU.
+  Connect out directly to a Wireshark connector or other MAC PDU consumer;
+  do not add a stream-to-vector block or CPU decode_mac after this block.
+  PDUs match ieee802_11.decode_mac (PHY metadata, dlt=105, MAC blob without FCS).
+  Requires the PHY-through-MAC graph's paired xclbin and instructions, with
+  VECTOR_SIZE/N_TILES matching the build. Each tile is 1024 input samples,
+  8192 output bytes and 9096 metadata bytes. Incomplete final batches are not
+  processed. rx_freq tags and frequency callbacks apply at batch boundaries.
+
 file_format: 1

@@ -99,6 +99,10 @@ add_executable(qa_phy_frequency_tags qa_phy_frequency_tags.cc)
 target_link_libraries(qa_phy_frequency_tags PRIVATE gnuradio::gnuradio-runtime)
 add_test(NAME qa_phy_frequency_tags COMMAND qa_phy_frequency_tags)
 
+add_executable(qa_phy_mac_metadata qa_phy_mac_metadata.cc)
+target_link_libraries(qa_phy_mac_metadata PRIVATE gnuradio::gnuradio-runtime)
+add_test(NAME qa_phy_mac_metadata COMMAND qa_phy_mac_metadata)
+
 # If your unit tests require special include paths, add them here
 #include_directories()
 # List all files that contain Boost.UTF unit tests here
