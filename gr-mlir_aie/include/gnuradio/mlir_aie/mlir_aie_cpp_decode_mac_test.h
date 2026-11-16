@@ -15,7 +15,7 @@ namespace gr {
 namespace mlir_aie {
 
 /*!
- * \brief <+description of block+>
+ * \brief Stateful NPU MAC decoder: uint8[48] decisions to CRC-valid MAC PDUs.
  * \ingroup mlir_aie
  *
  */
@@ -33,7 +33,9 @@ public:
      * class. mlir_aie::mlir_aie_cpp_decode_mac_test::make is the public interface for
      * creating new instances.
      */
-    static sptr make();
+    static sptr make(const char* path_xclbin,
+                     const char* path_insts_bin,
+                     const char* kernel_name = "MLIR_AIE");
 };
 
 } // namespace mlir_aie

@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(mlir_aie_cpp_decode_mac_test.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(27d2a16ea80dcc2aabd4e1add6951aff)                     */
+/* BINDTOOL_HEADER_FILE_HASH(3aa7a5a463d810f26500d95ec8ab4693)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -37,6 +37,9 @@ void bind_mlir_aie_cpp_decode_mac_test(py::module& m)
         std::shared_ptr<mlir_aie_cpp_decode_mac_test>>(m, "mlir_aie_cpp_decode_mac_test", D(mlir_aie_cpp_decode_mac_test))
 
         .def(py::init(&mlir_aie_cpp_decode_mac_test::make),
+            py::arg("path_xclbin"),
+            py::arg("path_insts_bin"),
+            py::arg("kernel_name") = "MLIR_AIE",
            D(mlir_aie_cpp_decode_mac_test,make)
         )
         
@@ -49,8 +52,6 @@ void bind_mlir_aie_cpp_decode_mac_test(py::module& m)
 
 
 }
-
-
 
 
 

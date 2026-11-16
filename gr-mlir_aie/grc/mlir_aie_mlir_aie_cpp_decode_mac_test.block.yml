@@ -1,47 +1,32 @@
 id: mlir_aie_mlir_aie_cpp_decode_mac_test
-label: mlir_aie_cpp_decode_mac_test
+label: Decode MAC Test
 category: '[mlir_aie]'
-
 templates:
   imports: from gnuradio import mlir_aie
-  make: mlir_aie.mlir_aie_cpp_decode_mac_test()
-
-#  Make one 'parameters' list entry for every parameter you want settable from the GUI.
-#     Keys include:
-#     * id (makes the value accessible as keyname, e.g. in the make entry)
-#     * label (label shown in the GUI)
-#     * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#     * default
+  make: mlir_aie.mlir_aie_cpp_decode_mac_test(${path_xclbin}, ${path_insts_bin}, ${kernel_name})
 parameters:
-- id: parametername_replace_me
-  label: FIX ME:
+- id: path_xclbin
+  label: XCLBIN path
+  dtype: file_open
+  default: build/final.xclbin
+- id: path_insts_bin
+  label: Instructions path
+  dtype: file_open
+  default: build/insts.bin
+- id: kernel_name
+  label: Kernel name
   dtype: string
-  default: You need to fill in your grc/mlir_aie_mlir_aie_cpp_decode_mac_test.block.yaml
-#- id: ...
-#  label: ...
-#  dtype: ...
-
-#  Make one 'inputs' list entry per input and one 'outputs' list entry per output.
-#  Keys include:
-#      * label (an identifier for the GUI)
-#      * domain (optional - stream or message. Default is stream)
-#      * dtype (e.g. int, float, complex, byte, short, xxx_vector, ...)
-#      * vlen (optional - data stream vector length. Default is 1)
-#      * optional (optional - set to 1 for optional inputs. Default is 0)
+  default: MLIR_AIE
 inputs:
-#- label: ...
-#  domain: ...
-#  dtype: ...
-#  vlen: ...
-#  optional: ...
-
+- domain: stream
+  dtype: byte
+  vlen: 48
 outputs:
-#- label: ...
-#  domain: ...
-#  dtype: ...
-#  vlen: ...
-#  optional: ...
-
-#  'file_format' specifies the version of the GRC yml format used in the file
-#  and should usually not be changed.
+- domain: message
+  id: out
+documentation: |-
+  Stateful NPU deinterleave/depuncture/Viterbi/descramble/CRC decoder.
+  Accepts uint8[48] constellation decisions and equalizer tags. Publishes
+  CRC-valid MAC PDUs, preserving original tags except iqdata and adding dlt=105.
+  Uses the standalone decode_mac kernel (1024-byte input, 16 symbols per tile).
 file_format: 1
