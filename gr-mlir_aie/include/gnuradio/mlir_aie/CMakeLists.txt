@@ -41,4 +41,5 @@ install(FILES api.h
     sigmf_tag_injector.h
     latency_tag_updater.h
     mlir_aie_cpp_tagged_int64_to_int64.h
-    mlir_aie_80211_phy_thru_mac_decode.h DESTINATION include/gnuradio/mlir_aie)
+    mlir_aie_80211_phy_thru_mac_decode.h
+    mlir_aie_cpp_decode_mac_test.h DESTINATION include/gnuradio/mlir_aie)

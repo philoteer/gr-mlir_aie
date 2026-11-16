@@ -56,7 +56,8 @@ list(APPEND mlir_aie_python_files
     sigmf_tag_injector_python.cc
     latency_tag_updater_python.cc
     mlir_aie_cpp_tagged_int64_to_int64_python.cc
-    mlir_aie_80211_phy_thru_mac_decode_python.cc python_bindings.cc)
+    mlir_aie_80211_phy_thru_mac_decode_python.cc
+    mlir_aie_cpp_decode_mac_test_python.cc python_bindings.cc)
 
 gr_pybind_make_oot(mlir_aie ../../.. gr::mlir_aie "${mlir_aie_python_files}")
 
